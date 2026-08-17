@@ -129,13 +129,23 @@ function clearRepaintPrompt(){repaintButton.classList.remove('settings-changed',
 function promptRepaint(){repaintButton.classList.remove('settings-changed','is-loading');void repaintButton.offsetWidth;repaintButton.classList.add('settings-changed');repaintButton.textContent='Settings changed · paint again';}
 async function setSource(source: string) { clearRepaintPrompt();await watercolor.setImage(source); if(scrollMode)requestScrollPainting();else watercolor.play(); }
 setSource(demoSample).catch(() => {});
+let uploadedObjectUrl: string | undefined;
 app.querySelector<HTMLInputElement>('input[type=file]')!.onchange = event => {
   const file = (event.target as HTMLInputElement).files?.[0];
   if (file) {
     const objectUrl = URL.createObjectURL(file);
-    setSource(objectUrl).finally(() => URL.revokeObjectURL(objectUrl));
+    const previousObjectUrl = uploadedObjectUrl;
+    uploadedObjectUrl = objectUrl;
+    void setSource(objectUrl).then(() => {
+      if (previousObjectUrl) URL.revokeObjectURL(previousObjectUrl);
+    }).catch(error => {
+      if (uploadedObjectUrl === objectUrl) uploadedObjectUrl = previousObjectUrl;
+      URL.revokeObjectURL(objectUrl);
+      console.error('Unable to process the selected image.', error);
+    });
   }
 };
+window.addEventListener('beforeunload', () => { if (uploadedObjectUrl) URL.revokeObjectURL(uploadedObjectUrl); });
 repaintButton.onclick = () => {
   window.clearTimeout(plannerTimer);
   timeline.value = '0';

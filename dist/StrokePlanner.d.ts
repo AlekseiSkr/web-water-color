@@ -22,6 +22,8 @@ export interface StrokeTuning {
     strokeWidth: number;
     boundaryFidelity: number;
     detailBudget: number;
+    detailMultiplier: number;
+    sourceAccuracy: number;
     detailPrecision: number;
     strokeCurvature: number;
 }

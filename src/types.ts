@@ -61,6 +61,10 @@ export interface WatercolorOptions {
   boundaryFidelity?: number;
   /** Number of selective finishing accents, 0–1. */
   detailBudget?: number;
+  /** Multiplies fine-form and finishing-stroke density from 1× to 10×. */
+  detailMultiplier?: number;
+  /** Sampling fidelity to the source image, 0–1. Higher values preserve smaller boundaries and color changes. */
+  sourceAccuracy?: number;
   /** Semantic selectivity of finishing accents, 0–1. */
   detailPrecision?: number;
   /** How late finishing accents enter the timeline, 0–1. */

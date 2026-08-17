@@ -27,6 +27,7 @@ export declare class WatercolorRenderer implements WatercolorControls {
     private scrubTarget;
     private checkpoints;
     private cpuPaintMs;
+    private timelineWork;
     constructor(canvas: HTMLCanvasElement, options?: WatercolorOptions);
     setImage(source: ImageSource): Promise<void>;
     play(): void;
@@ -37,6 +38,7 @@ export declare class WatercolorRenderer implements WatercolorControls {
     capture(type?: string, quality?: number): string;
     private updatePainting;
     private targetSegment;
+    private buildTimelineWork;
     private strokeEnd;
     private partialStroke;
     private strokeRevealSpan;

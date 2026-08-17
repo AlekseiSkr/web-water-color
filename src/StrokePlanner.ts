@@ -8,7 +8,7 @@ export interface PaintSegment {
 export interface StrokePlan { segments: PaintSegment[]; sourceAspect: number; layerEnds: number[]; bounds: [number,number,number,number]; }
 export interface StrokeTuning {
   strokeEconomy:number;shapeSimplification:number;strokeLength:number;strokeWidth:number;boundaryFidelity:number;
-  detailBudget:number;detailPrecision:number;strokeCurvature:number;
+  detailBudget:number;detailMultiplier:number;sourceAccuracy:number;detailPrecision:number;strokeCurvature:number;
 }
 
 class Random {
@@ -83,19 +83,20 @@ export async function planStrokes(source:ImageSource,seed:number,targetAspect:nu
   const width=Math.max(24,Math.round(image.width*scale)),height=Math.max(24,Math.round(image.height*scale));
   const canvas=document.createElement('canvas'); canvas.width=width; canvas.height=height;
   const context=canvas.getContext('2d',{willReadFrequently:true})!; context.drawImage(image,0,0,width,height);
-  const data=context.getImageData(0,0,width,height).data,tune:StrokeTuning={strokeEconomy:.72,shapeSimplification:.62,strokeLength:.58,strokeWidth:.58,boundaryFidelity:.72,detailBudget:.42,detailPrecision:.78,strokeCurvature:.34,...tuning};
+  const data=context.getImageData(0,0,width,height).data,tune:StrokeTuning={strokeEconomy:.72,shapeSimplification:.62,strokeLength:.58,strokeWidth:.58,boundaryFidelity:.72,detailBudget:.42,detailMultiplier:1,sourceAccuracy:.65,detailPrecision:.78,strokeCurvature:.34,...tuning};
   // Keep the authored default (~.72) neutral, but let zero economy become a genuinely dense reconstruction.
   const spacingScale=.48+tune.strokeEconomy*.72,chanceScale=1.55-tune.strokeEconomy*.77,detailEconomyScale=1.70-tune.strokeEconomy*.97,lengthScale=.65+tune.strokeLength*.60,widthScale=.65+tune.strokeWidth*.60;
+  const detailMultiplier=Math.max(1,Math.min(10,tune.detailMultiplier)),sourceAccuracy=Math.max(0,Math.min(1,tune.sourceAccuracy));
   const attention=detailMap?await detailMap({data:new Uint8ClampedArray(data),width,height}):createSemanticAttentionMap(data,width,height,detailFocus);
   if(attention.length!==width*height)throw new Error(`detailMap returned ${attention.length} weights; expected ${width*height}.`);
   // Progressive analysis mimics a painter squinting at broad masses before resolving detail.
-  const coarseData=blurPixels(data,width,height,Math.round(6+tune.shapeSimplification*7)),massData=blurPixels(data,width,height,Math.round(3+tune.shapeSimplification*5)),formData=blurPixels(data,width,height,Math.round(2+tune.shapeSimplification*2)),refinedData=blurPixels(data,width,height,1);
+  const accuracyBlur=1-sourceAccuracy*.52,coarseData=blurPixels(data,width,height,Math.round((6+tune.shapeSimplification*7)*accuracyBlur)),massData=blurPixels(data,width,height,Math.round((3+tune.shapeSimplification*5)*accuracyBlur)),formData=blurPixels(data,width,height,Math.round((2+tune.shapeSimplification*2)*accuracyBlur)),refinedData=sourceAccuracy>.86?new Uint8ClampedArray(data):blurPixels(data,width,height,1);
   const fields=[structureField(formData,width,height),structureField(refinedData,width,height),structureField(data,width,height)];
   const random=new Random(seed),sourceAspect=image.width/image.height,segments:PaintSegment[]=[],layerEnds:number[]=[];
-  const minSide=Math.min(width,height);let nextStrokeId=0;
+  const minSide=Math.min(width,height),analysisScale=Math.max(width,height)/360;let nextStrokeId=0;
   const appendRegionPass=(layer:number,sourceData:Uint8ClampedArray,step:number,levels:number,radius:number,minCells:number,opacity:number,water:number)=>{
-    const strokes=regionDragStrokes(sourceData,width,height,step,levels,radius,minCells,random);
-    for(const planned of strokes){const strokeId=nextStrokeId++,strokeRadius=radius/minSide*random.between(.92,1.08);
+    const strokes=regionDragStrokes(sourceData,width,height,step*analysisScale,levels,radius*analysisScale,minCells,random);
+    for(const planned of strokes){const strokeId=nextStrokeId++,strokeRadius=radius*analysisScale/minSide*random.between(.92,1.08);
       for(let point=1;point<planned.points.length;point++){const start=planned.points[point-1],end=planned.points[point];segments.push({
         start:mapPoint(start[0]/width,start[1]/height,sourceAspect,targetAspect,fit),end:mapPoint(end[0]/width,end[1]/height,sourceAspect,targetAspect,fit),
         color:planned.color,radius:strokeRadius,opacity:opacity*random.between(.94,1.06),water:water*random.between(.92,1.08),layer,strokeId});}}
@@ -119,9 +120,9 @@ export async function planStrokes(source:ImageSource,seed:number,targetAspect:nu
     {data:refinedData,field:1,spacing:9,radius:2.8,length:32,opacity:.063,water:.29,chance:.50,edgeOnly:false},
     {data,field:2,spacing:7,radius:1.08,length:13,opacity:.064,water:.14,chance:.98,edgeOnly:true},
   ];
-  passes.forEach((pass,passIndex)=>{const layer=passIndex+2,strokes:PaintSegment[][]=[],spacing=pass.spacing*spacingScale,radius=pass.radius*widthScale,plannedLength=pass.length*lengthScale,offset=random.between(0,spacing);
+  passes.forEach((pass,passIndex)=>{const layer=passIndex+2,strokes:PaintSegment[][]=[],density=passIndex===1?1+(detailMultiplier-1)*.20:passIndex>=2?detailMultiplier:1,spacing=pass.spacing*analysisScale*spacingScale/Math.sqrt(density),radius=pass.radius*analysisScale*widthScale/Math.pow(density,.10),plannedLength=pass.length*analysisScale*lengthScale,offset=random.between(0,spacing);
     const detailCells=new Set<number>();if(pass.edgeOnly){const ranked:Array<{key:number;score:number}>=[];for(let gridY=0,y=offset;y<height;gridY++,y+=spacing)for(let gridX=0,x=offset;x<width;gridX++,x+=spacing){const ix=Math.max(1,Math.min(width-2,Math.round(x))),iy=Math.max(1,Math.min(height-2,Math.round(y))),field=fields[pass.field],magnitude=Math.hypot(field.gx[iy*width+ix],field.gy[iy*width+ix]),importance=Math.max(0,Math.min(1,attention[iy*width+ix]));
-      if(magnitude>.08&&importance>.25+tune.detailPrecision*.22)ranked.push({key:gridY*100000+gridX,score:Math.pow(importance,2+tune.detailPrecision*4)*(.22+Math.min(.8,magnitude))});}ranked.sort((a,b)=>b.score-a.score);const base=mode==='oil'?36:44,cap=Math.round(base*(.25+tune.detailBudget*1.8)*detailEconomyScale);ranked.slice(0,cap).forEach(candidate=>detailCells.add(candidate.key));}
+      if(magnitude>.08&&importance>.25+tune.detailPrecision*.22)ranked.push({key:gridY*100000+gridX,score:Math.pow(importance,2+tune.detailPrecision*4)*(.22+Math.min(.8,magnitude))});}ranked.sort((a,b)=>b.score-a.score);const base=mode==='oil'?36:44,cap=Math.round(base*(.25+tune.detailBudget*1.8)*detailEconomyScale*detailMultiplier);ranked.slice(0,cap).forEach(candidate=>detailCells.add(candidate.key));}
     for(let gridY=0,y=offset;y<height;gridY++,y+=spacing)for(let gridX=0,x=offset;x<width;gridX++,x+=spacing){if(pass.edgeOnly&&!detailCells.has(gridY*100000+gridX))continue;
       const px=x+random.between(-spacing*.46,spacing*.46),py=y+random.between(-spacing*.46,spacing*.46);
       const ix=Math.max(1,Math.min(width-2,Math.round(px))),iy=Math.max(1,Math.min(height-2,Math.round(py)));
@@ -137,7 +138,7 @@ export async function planStrokes(source:ImageSource,seed:number,targetAspect:nu
         tx=tx*(1-weight)+Math.cos(angle)*weight;ty=ty*(1-weight)+Math.sin(angle)*weight;const length=Math.max(.001,Math.hypot(tx,ty));tx/=length;ty/=length;
       }
       const detailScale=passIndex>=3?1.16-detailWeight*.38:1,totalLength=plannedLength*detailScale*random.between(mode==='oil' ? .84 : .72,mode==='oil' ? 1.18 : 1.28),steps=layer>=5?2:(mode==='oil'?6:5),points:Array<[number,number]>=[];
-      const centerColor=pixel(pass.data,width,height,px,py),coherence=[.30,.26,.20,.14,.10][passIndex]*(1.30-tune.boundaryFidelity*.55);
+      const centerColor=pixel(pass.data,width,height,px,py),coherence=[.30,.26,.20,.14,.10][passIndex]*(1.30-tune.boundaryFidelity*.55)*(1.22-sourceAccuracy*.42);
       const extent=(sign:number)=>{let accepted=0,misses=0;for(let distance=3;distance<=totalLength*.5;distance+=3){const sampleX=px+tx*distance*sign,sampleY=py+ty*distance*sign;
         if(sampleX<1||sampleX>=width-1||sampleY<1||sampleY>=height-1)break;const candidate=pixel(pass.data,width,height,sampleX,sampleY),difference=Math.hypot(candidate[0]-centerColor[0],candidate[1]-centerColor[1],candidate[2]-centerColor[2]);
         if(difference>coherence){if(++misses>=2)break;}else{accepted=distance;misses=0;}}return accepted;};

@@ -14,7 +14,6 @@ app.innerHTML = `
           <label class="upload">Choose an image<input type="file" accept="image/*"></label>
           <small class="privacy">Your image stays in this browser. Nothing is uploaded or stored.</small>
           <button class="repaint">Paint another variation</button>
-          <button class="pause">Pause</button>
           <button class="scroll-draw" aria-pressed="false">Draw from page scroll</button>
           <label>Timeline <input class="timeline" type="range" min="0" max="1" step="0.001" value="0"></label>
           <label><span class="bloom-name">Wet mixing</span><input class="bloom" type="range" min="0" max="1" step="0.01" value="0.70"></label>
@@ -37,15 +36,16 @@ app.innerHTML = `
             </div>
             <div class="dial-group"><h2>Selective detail</h2>
               <label><span>Detail budget <output>42</output></span><input data-option="detailBudget" type="range" min="0" max="1" step="0.01" value="0.42"></label>
+              <label><span>Detail multiplier <output>1×</output></span><input data-option="detailMultiplier" data-format="multiplier" type="range" min="1" max="10" step="0.5" value="1"></label>
+              <label><span>Source accuracy <output>65</output></span><input data-option="sourceAccuracy" type="range" min="0" max="1" step="0.01" value="0.65"></label>
               <label><span>Detail precision <output>78</output></span><input data-option="detailPrecision" type="range" min="0" max="1" step="0.01" value="0.78"></label>
-              <label><span>Detail delay <output>82</output></span><input data-option="detailDelay" type="range" min="0" max="1" step="0.01" value="0.82"></label>
             </div>
             <div class="dial-group"><h2>Brush and surface</h2>
               <label><span>Paint load <output>70</output></span><input data-option="paintLoad" type="range" min="0" max="1" step="0.01" value="0.70"></label>
               <label class="oil-control"><span>Dry brush <output>20</output></span><input data-option="dryBrush" type="range" min="0" max="1" step="0.01" value="0.20"></label>
               <label><span>Bristle definition <output>58</output></span><input data-option="bristleStrength" type="range" min="0" max="1" step="0.01" value="0.58"></label>
               <label class="oil-control"><span>Oil gloss <output>48</output></span><input data-option="gloss" type="range" min="0" max="1" step="0.01" value="0.48"></label>
-              <label><span>Paper roughness <output>39</output></span><input data-option="paperRoughness" type="range" min="0" max="1" step="0.01" value="0.78"></label>
+              <label><span>Paper roughness <output>78</output></span><input data-option="paperRoughness" type="range" min="0" max="1" step="0.01" value="0.78"></label>
               <label class="water-control"><span>Paper showing through <output>12</output></span><input data-option="transparency" type="range" min="0" max="1" step="0.01" value="0.12"></label>
               <label class="water-control"><span>Wet edge pooling <output>68</output></span><input data-option="edgeDarkening" type="range" min="0" max="1" step="0.01" value="0.68"></label>
             </div>
@@ -62,7 +62,7 @@ const timeline = app.querySelector<HTMLInputElement>('.timeline')!;
 const stage = app.querySelector<HTMLElement>('.stage')!;
 const scrollScene = app.querySelector<HTMLElement>('.scroll-scene')!;
 const paintingLayout = app.querySelector<HTMLElement>('.painting-layout')!;
-const pauseButton = app.querySelector<HTMLButtonElement>('.pause')!;
+const repaintButton = app.querySelector<HTMLButtonElement>('.repaint')!;
 const scrollButton = app.querySelector<HTMLButtonElement>('.scroll-draw')!;
 const scrollProgress = app.querySelector<HTMLElement>('.scroll-progress span')!;
 const controls = app.querySelector<HTMLElement>('aside')!;
@@ -70,6 +70,18 @@ let scrollMode = false;
 let scrollUpdate = 0;
 let scrollValue = 0;
 const watercolor = new WatercolorRenderer(canvas, { mode: 'oil', duration: 14, onProgress: p => timeline.value = String(p) });
+
+function protectMobileRangeTrack(input:HTMLInputElement){
+  let pointer=-1,startX=0,startY=0,startValue=0,gesture:'pending'|'drag'|'scroll'='pending';
+  const geometry=()=>{const rect=input.getBoundingClientRect(),thumb=25,min=Number(input.min)||0,max=Number(input.max)||1,value=Number(input.value),ratio=(value-min)/Math.max(.0001,max-min);return{rect,thumb,min,max,center:rect.left+thumb/2+ratio*(rect.width-thumb)};};
+  input.addEventListener('pointerdown',event=>{if(!matchMedia('(pointer:coarse), (max-width:760px)').matches)return;const {center,thumb}=geometry();pointer=event.pointerId;startX=event.clientX;startY=event.clientY;startValue=Number(input.value);gesture=Math.abs(event.clientX-center)>thumb*.72?'scroll':'pending';},{capture:true});
+  input.addEventListener('input',event=>{if(pointer!==-1&&gesture!=='drag'){input.value=String(startValue);event.stopImmediatePropagation();}},{capture:true});
+  window.addEventListener('pointermove',event=>{if(event.pointerId!==pointer)return;const dx=event.clientX-startX,dy=event.clientY-startY;if(gesture==='pending'&&Math.hypot(dx,dy)>4)gesture=Math.abs(dx)>Math.abs(dy)?'drag':'scroll';if(gesture==='scroll'){if(Number(input.value)!==startValue)input.value=String(startValue);return;}if(gesture!=='drag')return;
+    event.preventDefault();const {rect,thumb,min,max}=geometry(),ratio=Math.max(0,Math.min(1,(event.clientX-rect.left-thumb/2)/Math.max(1,rect.width-thumb))),step=Number(input.step)||.01,next=min+ratio*(max-min);input.value=String(Math.round(next/step)*step);input.dispatchEvent(new Event('input',{bubbles:true}));
+  },{passive:false});
+  window.addEventListener('pointerup',event=>{if(event.pointerId!==pointer)return;if(gesture==='drag')input.dispatchEvent(new Event('change',{bubbles:true}));pointer=-1;gesture='pending';});
+}
+app.querySelectorAll<HTMLInputElement>('input[type=range]').forEach(protectMobileRangeTrack);
 
 const demoSample = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(`
   <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="900" viewBox="0 0 1200 900">
@@ -102,11 +114,13 @@ function scrollPainting(){
 function requestScrollPainting(){if(scrollMode&&!scrollUpdate)scrollUpdate=requestAnimationFrame(scrollPainting);}
 function setScrollMode(enabled:boolean){
   scrollMode=enabled;document.body.classList.toggle('scroll-mode',enabled);scrollButton.classList.toggle('active',enabled);scrollButton.setAttribute('aria-pressed',String(enabled));
-  scrollButton.textContent=enabled?'Exit scroll drawing':'Draw from page scroll';pauseButton.disabled=enabled;timeline.disabled=enabled;
-  if(enabled){watercolor.pause();pauseButton.textContent='Continue';requestAnimationFrame(()=>{const sceneTop=scrollScene.getBoundingClientRect().top+window.scrollY;window.scrollTo({top:sceneTop,behavior:'smooth'});requestScrollPainting();});}
-  else {timeline.value=String(scrollValue);scrollProgress.textContent=`${Math.round(scrollValue*100)}%`;}
+  scrollButton.textContent=enabled?'Exit scroll drawing':'Draw from page scroll';timeline.disabled=enabled;
+  if(enabled){watercolor.pause();requestAnimationFrame(()=>{const sceneTop=scrollScene.getBoundingClientRect().top+window.scrollY;window.scrollTo({top:sceneTop,behavior:'smooth'});requestScrollPainting();});}
+  else {timeline.value=String(scrollValue);scrollProgress.textContent=`${Math.round(scrollValue*100)}%`;watercolor.play();}
 }
-async function setSource(source: string) { await watercolor.setImage(source); if(scrollMode)requestScrollPainting();else watercolor.play(); }
+function clearRepaintPrompt(){repaintButton.classList.remove('settings-changed');repaintButton.textContent='Paint another variation';}
+function promptRepaint(){repaintButton.classList.remove('settings-changed');void repaintButton.offsetWidth;repaintButton.classList.add('settings-changed');repaintButton.textContent='Settings changed · paint again';}
+async function setSource(source: string) { clearRepaintPrompt();await watercolor.setImage(source); if(scrollMode)requestScrollPainting();else watercolor.play(); }
 setSource(demoSample).catch(() => {});
 app.querySelector<HTMLInputElement>('input[type=file]')!.onchange = event => {
   const file = (event.target as HTMLInputElement).files?.[0];
@@ -115,28 +129,27 @@ app.querySelector<HTMLInputElement>('input[type=file]')!.onchange = event => {
     setSource(objectUrl).finally(() => URL.revokeObjectURL(objectUrl));
   }
 };
-app.querySelector<HTMLButtonElement>('.repaint')!.onclick = () => watercolor.restart();
-pauseButton.onclick = event => {
-  const button = event.currentTarget as HTMLButtonElement;
-  if (button.textContent === 'Pause') { watercolor.pause(); button.textContent = 'Continue'; }
-  else { watercolor.play(); button.textContent = 'Pause'; }
-};
+repaintButton.onclick = () => {clearRepaintPrompt();watercolor.restart();};
 scrollButton.onclick=()=>setScrollMode(!scrollMode);
 window.addEventListener('scroll',requestScrollPainting,{passive:true});
 window.addEventListener('resize',requestScrollPainting);
 timeline.oninput = () => watercolor.seek(Number(timeline.value));
-app.querySelector<HTMLInputElement>('.bloom')!.oninput = event => watercolor.setOptions({ bloom: Number((event.target as HTMLInputElement).value) });
-app.querySelector<HTMLInputElement>('.grain')!.oninput = event => watercolor.setOptions({ granulation: Number((event.target as HTMLInputElement).value) });
-app.querySelector<HTMLSelectElement>('.quality')!.onchange=event=>watercolor.setOptions({renderQuality:(event.target as HTMLSelectElement).value as 'fast'|'balanced'|'high'});
-const plannerDials=new Set(['strokeEconomy','shapeSimplification','strokeLength','strokeWidth','boundaryFidelity','detailBudget','detailPrecision','strokeCurvature']);
-let dialTimer=0;
-app.querySelectorAll<HTMLInputElement>('[data-option]').forEach(input=>{input.setAttribute('aria-label',input.closest('label')?.querySelector('span')?.firstChild?.textContent?.trim()??input.dataset.option!);input.oninput=()=>{
-  input.closest('label')?.querySelector('output')!.replaceChildren(String(Math.round(Number(input.value)*100)));const option=input.dataset.option as keyof WatercolorOptions,value=Number(input.value);
-  window.clearTimeout(dialTimer);dialTimer=window.setTimeout(()=>watercolor.setOptions({[option]:value} as Partial<WatercolorOptions>),plannerDials.has(option)?180:60);
+timeline.onchange=()=>{if(!scrollMode)watercolor.play();};
+app.querySelector<HTMLInputElement>('.bloom')!.oninput = event => {watercolor.setOptions({ bloom: Number((event.target as HTMLInputElement).value) });promptRepaint();};
+app.querySelector<HTMLInputElement>('.grain')!.oninput = event => {watercolor.setOptions({ granulation: Number((event.target as HTMLInputElement).value) });promptRepaint();};
+app.querySelector<HTMLSelectElement>('.quality')!.onchange=event=>{watercolor.setOptions({renderQuality:(event.target as HTMLSelectElement).value as 'fast'|'balanced'|'high'});promptRepaint();};
+const plannerDials=new Set(['strokeEconomy','shapeSimplification','strokeLength','strokeWidth','boundaryFidelity','detailBudget','detailMultiplier','sourceAccuracy','detailPrecision','strokeCurvature']);
+let plannerTimer=0;const pendingPlannerOptions:Partial<WatercolorOptions>={};
+app.querySelectorAll<HTMLInputElement>('[data-option]').forEach(input=>{let dialTimer=0;input.setAttribute('aria-label',input.closest('label')?.querySelector('span')?.firstChild?.textContent?.trim()??input.dataset.option!);input.oninput=()=>{
+  const value=Number(input.value),display=input.dataset.format==='multiplier'?`${value.toFixed(value%1?1:0)}×`:String(Math.round(value*100));input.closest('label')?.querySelector('output')!.replaceChildren(display);const option=input.dataset.option as keyof WatercolorOptions;
+  promptRepaint();
+  if(plannerDials.has(option)){Object.assign(pendingPlannerOptions,{[option]:value});window.clearTimeout(plannerTimer);plannerTimer=window.setTimeout(()=>{watercolor.setOptions({...pendingPlannerOptions});for(const key of Object.keys(pendingPlannerOptions))delete pendingPlannerOptions[key as keyof WatercolorOptions];},180);}
+  else {window.clearTimeout(dialTimer);dialTimer=window.setTimeout(()=>watercolor.setOptions({[option]:value} as Partial<WatercolorOptions>),60);}
 };});
 app.querySelector<HTMLSelectElement>('.mode')!.onchange = event => {
   const mode = (event.target as HTMLSelectElement).value as 'oil' | 'watercolor';
   watercolor.setOptions({ mode });
+  promptRepaint();
   controls.dataset.mode=mode;
   app.querySelector('.wash-label')!.textContent = mode === 'oil' ? 'wet on wet · layered impasto' : 'wet on dry · five washes';
   app.querySelector('.bloom-name')!.textContent = mode === 'oil' ? 'Wet mixing' : 'Water bloom';

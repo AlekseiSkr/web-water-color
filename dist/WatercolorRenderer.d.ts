@@ -4,6 +4,8 @@ export declare class WatercolorRenderer implements WatercolorControls {
     private context;
     private pigment;
     private pigmentContext;
+    private livePaint;
+    private livePaintContext;
     private paper;
     private paperContext;
     private options;
@@ -35,7 +37,11 @@ export declare class WatercolorRenderer implements WatercolorControls {
     capture(type?: string, quality?: number): string;
     private updatePainting;
     private targetSegment;
+    private strokeEnd;
+    private partialStroke;
+    private strokeRevealSpan;
     private paintNextStroke;
+    private renderLiveStrokes;
     private depositBudget;
     private cancelCompletion;
     private cancelScrub;

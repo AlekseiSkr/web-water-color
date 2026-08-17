@@ -38,6 +38,10 @@ export interface WatercolorOptions {
     analysisResolution?: number;
     /** Maximum complete brush paths deposited per animation frame. Rendering is also capped by a small time budget. */
     strokesPerFrame?: number;
+    /** Minimum on-screen drawing time for an individual brush stroke, in seconds. */
+    strokeDuration?: number;
+    /** Cubic Bézier control points used while the brush travels along each stroke. */
+    strokeEase?: [number, number, number, number];
     /** Automatic portrait-aware detail allocation, uniform detail, or a portrait-prioritized analysis. */
     detailFocus?: 'auto' | 'uniform' | 'portrait';
     /** Optional application-supplied semantic attention map. Overrides detailFocus analysis. */

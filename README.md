@@ -71,6 +71,8 @@ painting.setOptions({
   shapeSimplification: .65,
   strokeLength: .7,
   strokeWidth: .55,
+  strokeDuration: .16,
+  strokeEase: [.22, 1, .36, 1],
   boundaryFidelity: .85,
   strokeCurvature: .3,
   detailBudget: .35,
@@ -92,4 +94,4 @@ The engine has two deliberately separate stages:
 1. `StrokePlanner` downsamples the source and begins by finding connected color masses. It computes each mass's principal axis and blocks that silhouette with ordered parallel drag strokes. Only afterward does a Sobel structure field add form corrections and contour-following detail at finer scales. A semantic attention map combines portrait-feature estimates with general visual saliency to decide where those scarce finishing strokes belong.
 2. `WatercolorRenderer` paints those paths onto a persistent transparent pigment surface over generated paper. Brushes flow down the paper-height gradient, leave individual hairs and pooled rims, expand while wet, and deposit heavy particles in procedural valleys.
 
-GSAP controls playback and seeking. React and Vue wrappers only manage lifecycle; the painter itself is framework-neutral. This is a physically inspired renderer rather than a Navier–Stokes fluid solver, keeping it interactive while ensuring the image is genuinely reconstructed from marks rather than revealed through a filter.
+GSAP controls playback and seeking. Each current brush path is progressively painted on a transient live-paint surface with an adjustable cubic Bézier ease, then committed to the persistent pigment surface when the gesture finishes. That separation keeps scrolling and reverse seeking deterministic without making completed paint flicker or rebuilding the full image every frame. React and Vue wrappers only manage lifecycle; the painter itself is framework-neutral. This is a physically inspired renderer rather than a Navier–Stokes fluid solver, keeping it interactive while ensuring the image is genuinely reconstructed from marks rather than revealed through a filter.

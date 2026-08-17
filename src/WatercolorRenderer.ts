@@ -4,12 +4,19 @@ import type { ImageSource, WatercolorControls, WatercolorOptions } from './types
 
 const defaults:Required<Omit<WatercolorOptions,'onProgress'|'onComplete'|'onPhaseChange'|'seed'|'detailMap'>>={
   mode:'watercolor',duration:12,paperColor:'#f3eadb',paperRoughness:.78,edgeDarkening:.68,granulation:.72,bloom:.72,
-  transparency:.12,washes:4,speed:1,pixelRatio:1,renderQuality:'fast',analysisResolution:360,strokesPerFrame:24,detailFocus:'auto',imageFit:'contain',
+  transparency:.12,washes:4,speed:1,pixelRatio:1,renderQuality:'fast',analysisResolution:360,strokesPerFrame:24,strokeDuration:.16,strokeEase:[.22,1,.36,1],detailFocus:'auto',imageFit:'contain',
   strokeEconomy:.72,shapeSimplification:.62,strokeLength:.58,strokeWidth:.58,boundaryFidelity:.72,detailBudget:.42,detailPrecision:.78,detailDelay:.82,
   strokeCurvature:.34,paintLoad:.70,dryBrush:.20,bristleStrength:.58,gloss:.48,
 };
 const clamp=(n:number,min=0,max=1)=>Math.min(max,Math.max(min,n));
 const randomSeed=()=>Math.random()*10_000;
+const cubicBezierEase=(progress:number,[x1,y1,x2,y2]:[number,number,number,number])=>{
+  const sample=(t:number,a:number,b:number)=>3*(1-t)*(1-t)*t*a+3*(1-t)*t*t*b+t*t*t;
+  const slope=(t:number,a:number,b:number)=>3*(1-t)*(1-t)*a+6*(1-t)*t*(b-a)+3*t*t*(1-b);
+  const x=clamp(progress);let t=x;
+  for(let iteration=0;iteration<5;iteration++){const derivative=slope(t,x1,x2);if(Math.abs(derivative)<1e-5)break;t=clamp(t-(sample(t,x1,x2)-x)/derivative);}
+  return clamp(sample(t,y1,y2));
+};
 
 class Random {
   constructor(private state:number){this.state=(state*1_000_003)|0||1;}
@@ -20,6 +27,8 @@ export class WatercolorRenderer implements WatercolorControls {
   private context:CanvasRenderingContext2D;
   private pigment=document.createElement('canvas');
   private pigmentContext=this.pigment.getContext('2d')!;
+  private livePaint=document.createElement('canvas');
+  private livePaintContext=this.livePaint.getContext('2d')!;
   private paper=document.createElement('canvas');
   private paperContext=this.paper.getContext('2d')!;
   private options:WatercolorOptions & typeof defaults;
@@ -90,18 +99,38 @@ export class WatercolorRenderer implements WatercolorControls {
   }
   private targetSegment(progress:number){
     if(!this.plan)return 0;const paintEnd=.94,normalized=clamp(progress/paintEnd),detailStart=.80+clamp(this.options.detailDelay)*.18,timing=[0,.26,.47,.65,.79,detailStart,1],ends=this.plan.layerEnds;
-    for(let layer=0;layer<ends.length;layer++){if(normalized<=timing[layer+1]){const start=layer===0?0:ends[layer-1],local=(normalized-timing[layer])/(timing[layer+1]-timing[layer]);return Math.round(start+(ends[layer]-start)*clamp(local));}}
+    for(let layer=0;layer<ends.length;layer++){if(normalized<=timing[layer+1]){const start=layer===0?0:ends[layer-1],local=(normalized-timing[layer])/(timing[layer+1]-timing[layer]);return start+(ends[layer]-start)*clamp(local);}}
     return this.plan.segments.length;
   }
-  private paintNextStroke(index:number,animate=false){
+  private strokeEnd(index:number){
+    if(!this.plan||index>=this.plan.segments.length)return index;const strokeId=this.plan.segments[index].strokeId;while(index<this.plan.segments.length&&this.plan.segments[index].strokeId===strokeId)index++;return index;
+  }
+  private partialStroke(stroke:PaintSegment[],progress:number){
+    const visible=clamp(progress)*stroke.length,complete=Math.floor(visible),partial=visible-complete,result=stroke.slice(0,complete);
+    if(partial>0&&complete<stroke.length){const segment=stroke[complete];result.push({...segment,end:[segment.start[0]+(segment.end[0]-segment.start[0])*partial,segment.start[1]+(segment.end[1]-segment.start[1])*partial]});}
+    return result;
+  }
+  private strokeRevealSpan(segmentCount:number){
+    if(!this.plan)return segmentCount;const unitsPerSecond=this.plan.segments.length/Math.max(.1,this.options.duration*.94)*Math.max(.1,this.options.speed);
+    return Math.max(segmentCount,unitsPerSecond*Math.max(.025,this.options.strokeDuration));
+  }
+  private paintNextStroke(index:number,animate=false,ctx=this.pigmentContext,progress=1){
     if(!this.plan)return index;const strokeId=this.plan.segments[index].strokeId,start=index;while(index<this.plan.segments.length&&this.plan.segments[index].strokeId===strokeId)index++;
-    const stroke=this.plan.segments.slice(start,index);if(this.options.mode==='oil')this.paintOilStroke(stroke,strokeId);else{this.paintWatercolorStroke(stroke,strokeId);if(animate&&strokeId%3===0)this.wetMarks.push({segments:stroke,strokeId,age:0});}
+    const fullStroke=this.plan.segments.slice(start,index),stroke=progress>=1?fullStroke:this.partialStroke(fullStroke,progress);if(this.options.mode==='oil')this.paintOilStroke(stroke,strokeId,ctx);else{this.paintWatercolorStroke(stroke,strokeId,0,ctx);if(progress>=1&&ctx===this.pigmentContext&&animate&&strokeId%3===0)this.wetMarks.push({segments:fullStroke,strokeId,age:0});}
     return index;
+  }
+  private renderLiveStrokes(target:number){
+    this.livePaintContext.clearRect(0,0,this.width,this.height);if(!this.plan)return;let index=this.drawnSegments,painted=0,scanned=0,brushProgress=0;
+    const activeLimit=Math.max(4,Math.min(18,Math.round(this.options.strokesPerFrame*.65)));
+    while(index<this.plan.segments.length&&painted<activeLimit&&scanned<64){const end=this.strokeEnd(index),span=this.strokeRevealSpan(end-index),raw=(target-(end-span))/span;
+      if(raw>0){const eased=cubicBezierEase(clamp(raw),this.options.strokeEase);brushProgress=eased;this.paintNextStroke(index,false,this.livePaintContext,eased);painted++;}index=end;scanned++;}
+    this.canvas.dataset.watercolorActiveStrokes=String(painted);this.canvas.dataset.watercolorStrokeProgress=brushProgress.toFixed(3);
   }
   private depositBudget(target:number,animate=false,budgetMs=this.options.mode==='oil'?7:8){
     const started=performance.now(),limit=Math.max(1,Math.round(this.options.strokesPerFrame));let strokes=0,index=this.drawnSegments;
-    while(index<target&&strokes<limit&&(strokes===0||performance.now()-started<budgetMs)){index=this.paintNextStroke(index,animate);strokes++;}
-    this.drawnSegments=index;if(!animate)this.maybeCheckpoint();this.cpuPaintMs+=performance.now()-started;if(this.plan&&index>=this.plan.segments.length)this.canvas.dataset.watercolorCpuMs=this.cpuPaintMs.toFixed(1);return index>=target;
+    while(this.plan&&index<this.plan.segments.length&&this.strokeEnd(index)<=target&&strokes<limit&&(strokes===0||performance.now()-started<budgetMs)){index=this.paintNextStroke(index,animate);strokes++;}
+    this.drawnSegments=index;this.renderLiveStrokes(target);if(!animate)this.maybeCheckpoint();this.cpuPaintMs+=performance.now()-started;if(this.plan&&index>=this.plan.segments.length)this.canvas.dataset.watercolorCpuMs=this.cpuPaintMs.toFixed(1);
+    return !this.plan||index>=this.plan.segments.length||this.strokeEnd(index)>target;
   }
   private cancelCompletion(){
     this.timelineFinished=false;if(this.completionFrame){cancelAnimationFrame(this.completionFrame);this.completionFrame=0;}
@@ -109,8 +138,8 @@ export class WatercolorRenderer implements WatercolorControls {
   private cancelScrub(){if(this.scrubFrame){cancelAnimationFrame(this.scrubFrame);this.scrubFrame=0;}}
   private scheduleScrub(){
     if(this.scrubFrame)return;this.scrubFrame=requestAnimationFrame(()=>{this.scrubFrame=0;if(this.destroyed||!this.plan)return;
-      if(this.drawnSegments>this.scrubTarget&&!this.restoreCheckpoint(this.scrubTarget))this.resetPainting();if(this.drawnSegments<this.scrubTarget)this.depositBudget(this.scrubTarget,false);this.compose();
-      if(this.drawnSegments<this.scrubTarget)this.scheduleScrub();});
+      if(this.drawnSegments>this.scrubTarget&&!this.restoreCheckpoint(this.scrubTarget))this.resetPainting();const caughtUp=this.depositBudget(this.scrubTarget,false);this.compose();
+      if(!caughtUp)this.scheduleScrub();});
   }
   private scheduleCompletion(){
     if(this.completionFrame||!this.timelineFinished)return;
@@ -119,14 +148,14 @@ export class WatercolorRenderer implements WatercolorControls {
       if(this.drawnSegments<this.plan.segments.length||this.wetMarks.length){this.scheduleCompletion();return;}
       this.timelineFinished=false;this.setPhase('complete');this.options.onComplete?.();});
   }
-  private paintOilStroke(segments:PaintSegment[],strokeId:number){
+  private paintOilStroke(segments:PaintSegment[],strokeId:number,ctx=this.pigmentContext){
     if(!segments.length)return;const random=new Random(this.seed+strokeId*31.77),first=segments[0],quality=this.qualityFactor();
     const rawPoints:Array<[number,number]>=[first.start,...segments.map(segment=>segment.end)].map(point=>[point[0]*this.width,point[1]*this.height]);
     let points=this.smoothPath(rawPoints,5);const characterRoll=random.next();let character:'loaded'|'dry'|'tap'='loaded';
     const dry=clamp(this.options.dryBrush);if(first.layer>=6)character=characterRoll<.45+dry*.4?'tap':'dry';else if(first.layer===5)character=characterRoll<.12+dry*.42?'tap':(characterRoll<.24+dry*.52?'dry':'loaded');else if(first.layer===4&&characterRoll<.05+dry*.35)character='dry';else if(characterRoll<.02+dry*.25)character='dry';
     if(character==='tap'){const start=Math.floor(points.length*.34),end=Math.ceil(points.length*.66);points=points.slice(start,end);}
     const radius=Math.max(.7,first.radius*this.height),source=first.color.map(value=>Math.round(clamp(value)*255)) as [number,number,number];
-    const profile=this.mixProfile(points,source),mixed=this.averageColors(profile),ctx=this.pigmentContext,opacity=clamp(first.opacity)*(.55+this.options.paintLoad*.65)*(character==='dry' ? .62 : 1);
+    const profile=this.mixProfile(points,source),mixed=this.averageColors(profile),opacity=clamp(first.opacity)*(.55+this.options.paintLoad*.65)*(character==='dry' ? .62 : 1);
     const depth=.45+this.options.granulation*.85;
     const dark=mixed.map(value=>Math.round(value*.55)) as [number,number,number],light=mixed.map(value=>Math.round(value+(255-value)*.42)) as [number,number,number];
     ctx.save();ctx.lineCap='round';ctx.lineJoin='round';
@@ -209,8 +238,8 @@ export class WatercolorRenderer implements WatercolorControls {
       ctx.strokeStyle=`rgba(${Math.round(color[0]+(255-color[0])*.72)},${Math.round(color[1]+(255-color[1])*.72)},${Math.round(color[2]+(255-color[2])*.72)},${.085*depth*opacity*this.options.gloss})`;ctx.lineWidth=Math.max(.35,radius*.035);
       ctx.beginPath();ctx.moveTo(point[0]+nx*offset,point[1]+ny*offset);ctx.lineTo(point[0]+nx*offset+dx*.65,point[1]+ny*offset+dy*.65);ctx.stroke();}
   }
-  private paintWatercolorStroke(segments:PaintSegment[],strokeId:number,expansion=0){
-    if(!segments.length)return;const first=segments[0],random=new Random(this.seed+strokeId*19.41+expansion*997),ctx=this.pigmentContext,quality=this.qualityFactor();
+  private paintWatercolorStroke(segments:PaintSegment[],strokeId:number,expansion=0,ctx=this.pigmentContext){
+    if(!segments.length)return;const first=segments[0],random=new Random(this.seed+strokeId*19.41+expansion*997),quality=this.qualityFactor();
     const raw:[number,number][]=[first.start,...segments.map(segment=>segment.end)].map(point=>this.flowPoint(point,first.radius,random));
     const points=this.smoothPath(raw,4),radius=Math.max(.45,first.radius*this.height),color=first.color.map(value=>Math.round(clamp(value)*255)) as [number,number,number];
     const opacity=first.opacity*(1-this.options.transparency*.55)*(.55+this.options.paintLoad*.70),wetScale=1+expansion*this.options.bloom*.34;
@@ -241,7 +270,7 @@ export class WatercolorRenderer implements WatercolorControls {
   }
   private compose(){
     this.context.save();this.context.globalCompositeOperation='source-over';this.context.drawImage(this.paper,0,0);
-    this.context.globalCompositeOperation=this.options.mode==='oil'?'source-over':'multiply';this.context.globalAlpha=this.options.mode==='oil'?1:.96;this.context.drawImage(this.pigment,0,0);this.context.restore();
+    this.context.globalCompositeOperation=this.options.mode==='oil'?'source-over':'multiply';this.context.globalAlpha=this.options.mode==='oil'?1:.96;this.context.drawImage(this.pigment,0,0);this.context.drawImage(this.livePaint,0,0);this.context.restore();
   }
   private createPaper(){
     this.paper.width=this.width;this.paper.height=this.height;const base=this.hex(this.options.paperColor),image=this.paperContext.createImageData(this.width,this.height),data=image.data;
@@ -258,17 +287,17 @@ export class WatercolorRenderer implements WatercolorControls {
   private restoreCheckpoint(target:number){
     for(let index=this.checkpoints.length-1;index>=0;index--){const checkpoint=this.checkpoints[index];if(checkpoint.segment>target)continue;this.pigmentContext.clearRect(0,0,this.width,this.height);this.pigmentContext.drawImage(checkpoint.surface,0,0);this.drawnSegments=checkpoint.segment;this.wetMarks=[];return true;}return false;
   }
-  private resetPainting(){this.pigmentContext.clearRect(0,0,this.width,this.height);this.drawnSegments=0;this.wetMarks=[];this.cpuPaintMs=0;this.canvas.dataset.watercolorCpuMs='0';this.compose();}
+  private resetPainting(){this.pigmentContext.clearRect(0,0,this.width,this.height);this.livePaintContext.clearRect(0,0,this.width,this.height);this.drawnSegments=0;this.wetMarks=[];this.cpuPaintMs=0;this.canvas.dataset.watercolorCpuMs='0';this.canvas.dataset.watercolorActiveStrokes='0';this.canvas.dataset.watercolorStrokeProgress='0.000';this.compose();}
   private rebuildToAsync(target:number){
     this.cancelScrub();this.clearCheckpoints();this.resetPainting();this.scrubTarget=target;this.scheduleScrub();
   }
   private resize(){
     const cssWidth=Math.max(1,this.canvas.clientWidth||this.canvas.width),cssHeight=Math.max(1,this.canvas.clientHeight||this.canvas.height),ratio=Math.min(window.devicePixelRatio||1,this.options.pixelRatio);
     const width=Math.min(1400,Math.round(cssWidth*ratio)),height=Math.min(1400,Math.round(cssHeight*ratio));if(width===this.width&&height===this.height)return;
-    this.width=width;this.height=height;this.canvas.width=width;this.canvas.height=height;this.pigment.width=width;this.pigment.height=height;this.clearCheckpoints();this.createPaper();if(this.plan)this.rebuildToAsync(this.targetSegment(this.progressState.progress));
+    this.width=width;this.height=height;this.canvas.width=width;this.canvas.height=height;this.pigment.width=width;this.pigment.height=height;this.livePaint.width=width;this.livePaint.height=height;this.clearCheckpoints();this.createPaper();if(this.plan)this.rebuildToAsync(this.targetSegment(this.progressState.progress));
   }
   private hex(value:string):[number,number,number]{const normalized=value.replace('#','');const full=normalized.length===3?normalized.split('').map(c=>c+c).join(''):normalized;const n=parseInt(full,16);return[(n>>16)&255,(n>>8)&255,n&255];}
   private canvasAspect(){return Math.max(1,this.canvas.clientWidth||this.canvas.width)/Math.max(1,this.canvas.clientHeight||this.canvas.height);}
   private setPhase(phase:'analyzing'|'painting'|'drying'|'complete'){if(this.phase===phase)return;this.phase=phase;this.options.onPhaseChange?.(phase);}
-  destroy(){this.destroyed=true;this.timeline?.kill();this.cancelCompletion();this.cancelScrub();this.clearCheckpoints();this.resizeObserver.disconnect();delete this.canvas.dataset.watercolorSegments;delete this.canvas.dataset.watercolorCpuMs;}
+  destroy(){this.destroyed=true;this.timeline?.kill();this.cancelCompletion();this.cancelScrub();this.clearCheckpoints();this.resizeObserver.disconnect();delete this.canvas.dataset.watercolorSegments;delete this.canvas.dataset.watercolorCpuMs;delete this.canvas.dataset.watercolorActiveStrokes;delete this.canvas.dataset.watercolorStrokeProgress;}
 }

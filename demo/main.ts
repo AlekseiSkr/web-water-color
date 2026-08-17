@@ -31,6 +31,7 @@ app.innerHTML = `
               <label><span>Shape simplification <output>62</output></span><input data-option="shapeSimplification" type="range" min="0" max="1" step="0.01" value="0.62"></label>
               <label><span>Stroke length <output>58</output></span><input data-option="strokeLength" type="range" min="0" max="1" step="0.01" value="0.58"></label>
               <label><span>Brush width <output>58</output></span><input data-option="strokeWidth" type="range" min="0" max="1" step="0.01" value="0.58"></label>
+              <label><span>Stroke draw time <output>16</output></span><input data-option="strokeDuration" type="range" min="0.04" max="0.30" step="0.01" value="0.16"></label>
               <label><span>Boundary fidelity <output>72</output></span><input data-option="boundaryFidelity" type="range" min="0" max="1" step="0.01" value="0.72"></label>
               <label><span>Gesture curvature <output>34</output></span><input data-option="strokeCurvature" type="range" min="0" max="1" step="0.01" value="0.34"></label>
             </div>
@@ -44,7 +45,7 @@ app.innerHTML = `
               <label class="oil-control"><span>Dry brush <output>20</output></span><input data-option="dryBrush" type="range" min="0" max="1" step="0.01" value="0.20"></label>
               <label><span>Bristle definition <output>58</output></span><input data-option="bristleStrength" type="range" min="0" max="1" step="0.01" value="0.58"></label>
               <label class="oil-control"><span>Oil gloss <output>48</output></span><input data-option="gloss" type="range" min="0" max="1" step="0.01" value="0.48"></label>
-              <label><span>Paper roughness <output>78</output></span><input data-option="paperRoughness" type="range" min="0" max="1" step="0.01" value="0.78"></label>
+              <label><span>Paper roughness <output>39</output></span><input data-option="paperRoughness" type="range" min="0" max="1" step="0.01" value="0.78"></label>
               <label class="water-control"><span>Paper showing through <output>12</output></span><input data-option="transparency" type="range" min="0" max="1" step="0.01" value="0.12"></label>
               <label class="water-control"><span>Wet edge pooling <output>68</output></span><input data-option="edgeDarkening" type="range" min="0" max="1" step="0.01" value="0.68"></label>
             </div>

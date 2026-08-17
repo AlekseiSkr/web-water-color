@@ -92,6 +92,8 @@ painting.setOptions({
 
 The canvas must have a real CSS width and height. Remote images require CORS permission if `capture()` is used. Respect `prefers-reduced-motion` in the host app by setting the result directly with `seek(1)`.
 
+Paper texture photograph by Olga Thelavart (Unsplash), supplied for this project.
+
 ## Why this architecture
 
 The engine has two deliberately separate stages:

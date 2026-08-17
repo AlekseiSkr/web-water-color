@@ -51,7 +51,7 @@ app.innerHTML = `
               <label class="oil-control"><span>Dry brush <output>20</output></span><input data-option="dryBrush" type="range" min="0" max="1" step="0.01" value="0.20"></label>
               <label><span>Bristle definition <output>58</output></span><input data-option="bristleStrength" type="range" min="0" max="1" step="0.01" value="0.58"></label>
               <label class="oil-control"><span>Oil gloss <output>48</output></span><input data-option="gloss" type="range" min="0" max="1" step="0.01" value="0.48"></label>
-              <label><span>Paper roughness <output>78</output></span><input data-option="paperRoughness" type="range" min="0" max="1" step="0.01" value="0.78"></label>
+              <label><span>Paper texture <output>78</output></span><input data-option="paperRoughness" type="range" min="0" max="1" step="0.01" value="0.78"></label>
               <label class="water-control"><span>Paper showing through <output>12</output></span><input data-option="transparency" type="range" min="0" max="1" step="0.01" value="0.12"></label>
               <label class="water-control"><span>Wet edge pooling <output>68</output></span><input data-option="edgeDarkening" type="range" min="0" max="1" step="0.01" value="0.68"></label>
             </div>

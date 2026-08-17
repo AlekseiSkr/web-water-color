@@ -1,6 +1,7 @@
 import gsap from 'gsap';
 import { planStrokes, type PaintSegment, type StrokePlan } from './StrokePlanner';
 import type { ImageSource, WatercolorControls, WatercolorOptions } from './types';
+import paperTextureUrl from './assets/cold-press-paper.jpg';
 
 const defaults:Required<Omit<WatercolorOptions,'onProgress'|'onComplete'|'onPhaseChange'|'seed'|'detailMap'>>={
   mode:'watercolor',duration:12,paperColor:'#f3eadb',paperRoughness:.78,edgeDarkening:.68,granulation:.72,bloom:.72,
@@ -10,6 +11,11 @@ const defaults:Required<Omit<WatercolorOptions,'onProgress'|'onComplete'|'onPhas
 };
 const clamp=(n:number,min=0,max=1)=>Math.min(max,Math.max(min,n));
 const randomSeed=()=>Math.random()*10_000;
+let paperTexture:HTMLImageElement|undefined,paperTexturePromise:Promise<HTMLImageElement|undefined>|undefined;
+const loadPaperTexture=()=>{
+  if(paperTexture)return Promise.resolve(paperTexture);if(paperTexturePromise)return paperTexturePromise;if(typeof Image==='undefined')return Promise.resolve(undefined);
+  paperTexturePromise=new Promise(resolve=>{const image=new Image();image.onload=()=>{paperTexture=image;resolve(image);};image.onerror=()=>resolve(undefined);image.src=paperTextureUrl;});return paperTexturePromise;
+};
 const cubicBezierEase=(progress:number,[x1,y1,x2,y2]:[number,number,number,number])=>{
   const sample=(t:number,a:number,b:number)=>3*(1-t)*(1-t)*t*a+3*(1-t)*t*t*b+t*t*t;
   const slope=(t:number,a:number,b:number)=>3*(1-t)*(1-t)*a+6*(1-t)*t*(b-a)+3*t*t*(1-b);
@@ -61,6 +67,7 @@ export class WatercolorRenderer implements WatercolorControls {
 
   async setImage(source:ImageSource){
     const request=++this.imageRequest;this.source=source;this.stopTimeline();this.cancelCompletion();this.cancelScrub();this.progressState.progress=0;this.resetPainting();this.options.onProgress?.(0);this.setPhase('analyzing');
+    await loadPaperTexture();if(this.destroyed||request!==this.imageRequest)return;this.createPaper();
     const detailScale=1+(Math.sqrt(clamp(this.options.detailMultiplier,1,10))-1)*(.35+clamp(this.options.sourceAccuracy)*.65),analysisResolution=Math.min(720,Math.round(this.options.analysisResolution*detailScale));
     const plan=await planStrokes(source,this.seed,this.canvasAspect(),analysisResolution,this.options.imageFit,this.options.mode,this.options.detailFocus,this.options.detailMap,{
       strokeEconomy:this.options.strokeEconomy,shapeSimplification:this.options.shapeSimplification,strokeLength:this.options.strokeLength,strokeWidth:this.options.strokeWidth,
@@ -295,10 +302,13 @@ export class WatercolorRenderer implements WatercolorControls {
     this.context.globalCompositeOperation=this.options.mode==='oil'?'source-over':'multiply';this.context.globalAlpha=this.options.mode==='oil'?1:.96;this.context.drawImage(this.pigment,0,0);this.context.drawImage(this.livePaint,0,0);this.context.restore();
   }
   private createPaper(){
-    this.paper.width=this.width;this.paper.height=this.height;const base=this.hex(this.options.paperColor),image=this.paperContext.createImageData(this.width,this.height),data=image.data;
-    for(let y=0;y<this.height;y++)for(let x=0;x<this.width;x++){const i=(y*this.width+x)*4,h=this.paperHeight(x,y)-.5,fiber=Math.sin(y*.72+x*.035+this.seed)*.5;
-      const variation=(h*.085+fiber*.012)*this.options.paperRoughness;data[i]=clamp(base[0]/255+variation)*255;data[i+1]=clamp(base[1]/255+variation)*255;data[i+2]=clamp(base[2]/255+variation)*255;data[i+3]=255;}
-    this.paperContext.putImageData(image,0,0);this.compose();
+    this.paper.width=this.width;this.paper.height=this.height;const context=this.paperContext;
+    context.save();context.globalCompositeOperation='source-over';context.globalAlpha=1;context.fillStyle=this.options.paperColor;context.fillRect(0,0,this.width,this.height);
+    if(paperTexture?.complete){const sourceAspect=paperTexture.naturalWidth/paperTexture.naturalHeight,targetAspect=this.width/this.height;let sx=0,sy=0,sw=paperTexture.naturalWidth,sh=paperTexture.naturalHeight;
+      if(sourceAspect>targetAspect){sw=sh*targetAspect;sx=(paperTexture.naturalWidth-sw)/2;}else{sh=sw/targetAspect;sy=(paperTexture.naturalHeight-sh)/2;}
+      context.globalAlpha=clamp(this.options.paperRoughness);context.drawImage(paperTexture,sx,sy,sw,sh,0,0,this.width,this.height);
+    }
+    context.restore();this.compose();
   }
   private qualityFactor(){return this.options.renderQuality==='fast'?.38:this.options.renderQuality==='balanced'?.68:1;}
   private clearCheckpoints(){this.checkpoints=[];}

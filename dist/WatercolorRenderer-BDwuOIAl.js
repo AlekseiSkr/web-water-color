@@ -148,7 +148,7 @@ function Kt(d, t, n, i, e, s, l, r) {
     h[g] = 1;
     let u = 0, x = 0, S = 0;
     for (; M.length; ) {
-      const b = M.pop(), v = b % o, w = Math.floor(b / o), A = Math.min(t - 1, Math.round((v + 0.5) * i)), D = Math.min(n - 1, Math.round((w + 0.5) * i)), W = (D * t + A) * 4;
+      const b = M.pop(), v = b % o, w = Math.floor(b / o), T = Math.min(t - 1, Math.round((v + 0.5) * i)), D = Math.min(n - 1, Math.round((w + 0.5) * i)), W = (D * t + T) * 4;
       f.push(b), u += d[W], x += d[W + 1], S += d[W + 2];
       for (const R of [b - 1, b + 1, b - o, b + o]) {
         if (R < 0 || R >= m || h[R] || c[R] !== p) continue;
@@ -175,21 +175,21 @@ function Kt(d, t, n, i, e, s, l, r) {
       const O = $[0] - p, P = $[1] - M;
       u += O * O, x += P * P, S += O * P;
     }
-    const b = 0.5 * Math.atan2(2 * S, u - x), v = Math.cos(b), w = Math.sin(b), A = -w, D = v, W = /* @__PURE__ */ new Map(), R = Math.max(i, s * 1.22);
+    const b = 0.5 * Math.atan2(2 * S, u - x), v = Math.cos(b), w = Math.sin(b), T = -w, D = v, W = /* @__PURE__ */ new Map(), R = Math.max(i, s * 1.22);
     for (const $ of f) {
-      const O = $[0] - p, P = $[1] - M, q = O * v + P * w, U = O * A + P * D, X = Math.round(U / R), T = W.get(X);
-      T ? (T.min = Math.min(T.min, q), T.max = Math.max(T.max, q), T.v += U, T.count++) : W.set(X, { min: q, max: q, v: U, count: 1 });
+      const O = $[0] - p, P = $[1] - M, A = O * v + P * w, U = O * T + P * D, X = Math.round(U / R), q = W.get(X);
+      q ? (q.min = Math.min(q.min, A), q.max = Math.max(q.max, A), q.v += U, q.count++) : W.set(X, { min: A, max: A, v: U, count: 1 });
     }
     for (const $ of [...W.values()].sort((O, P) => O.v / O.count - P.v / P.count)) {
       let O = $.min + s * 0.65, P = $.max - s * 0.65;
       if ($.count < 2 || P - O < s * 1.65) continue;
-      const q = $.v / $.count, U = r.between(-0.1, 0.1) * s, X = [];
+      const A = $.v / $.count, U = r.between(-0.1, 0.1) * s, X = [];
       for (let B = 0; B <= 6; B++) {
-        const pt = B / 6, at = O + (P - O) * pt, wt = Math.sin(Math.PI * pt) * U, lt = p + v * at + A * (q + wt), ct = M + w * at + D * (q + wt);
+        const pt = B / 6, at = O + (P - O) * pt, wt = Math.sin(Math.PI * pt) * U, lt = p + v * at + T * (A + wt), ct = M + w * at + D * (A + wt);
         X.push([lt, ct]);
       }
-      const T = s * 1.1;
-      X.some((B) => B[0] < T || B[0] > t - T || B[1] < T || B[1] > n - T) || y.push({ points: X, color: g.color });
+      const q = s * 1.1;
+      X.some((B) => B[0] < q || B[0] > t - q || B[1] < q || B[1] > n - q) || y.push({ points: X, color: g.color });
     }
   }
   return y;
@@ -201,17 +201,17 @@ async function Zt(d, t, n, i = 420, e = "cover", s = "watercolor", l = "auto", r
   y.drawImage(a, 0, 0, c, h);
   const g = y.getImageData(0, 0, c, h).data, p = { strokeEconomy: 0.72, shapeSimplification: 0.62, strokeLength: 0.58, strokeWidth: 0.58, boundaryFidelity: 0.72, detailBudget: 0.42, detailMultiplier: 1, sourceAccuracy: 0.65, detailPrecision: 0.78, strokeCurvature: 0.34, ...o }, M = 0.48 + p.strokeEconomy * 0.72, f = 1.55 - p.strokeEconomy * 0.77, u = 1.7 - p.strokeEconomy * 0.97, x = 0.65 + p.strokeLength * 0.6, S = 0.65 + p.strokeWidth * 0.6, b = Math.max(1, Math.min(10, p.detailMultiplier)), v = Math.max(0, Math.min(1, p.sourceAccuracy)), w = r ? await r({ data: new Uint8ClampedArray(g), width: c, height: h }) : Nt(g, c, h, l);
   if (w.length !== c * h) throw new Error(`detailMap returned ${w.length} weights; expected ${c * h}.`);
-  const A = 1 - v * 0.52, D = vt(g, c, h, Math.round((6 + p.shapeSimplification * 7) * A)), W = vt(g, c, h, Math.round((3 + p.shapeSimplification * 5) * A)), R = vt(g, c, h, Math.round((2 + p.shapeSimplification * 2) * A)), $ = v > 0.86 ? new Uint8ClampedArray(g) : vt(g, c, h, 1), O = [It(R, c, h), It($, c, h), It(g, c, h)], P = new Jt(t), q = a.width / a.height, U = [], X = [], T = Math.min(c, h), B = Math.max(c, h) / 360;
+  const T = 1 - v * 0.52, D = vt(g, c, h, Math.round((6 + p.shapeSimplification * 7) * T)), W = vt(g, c, h, Math.round((3 + p.shapeSimplification * 5) * T)), R = vt(g, c, h, Math.round((2 + p.shapeSimplification * 2) * T)), $ = v > 0.86 ? new Uint8ClampedArray(g) : vt(g, c, h, 1), O = [It(R, c, h), It($, c, h), It(g, c, h)], P = new Jt(t), A = a.width / a.height, U = [], X = [], q = Math.min(c, h), B = Math.max(c, h) / 360;
   let pt = 0;
   const at = (E, V, ot, K, ft, Q, yt, Pt) => {
     const mt = Kt(V, c, h, ot * B, K, ft * B, Q, P);
     for (const rt of mt) {
-      const I = pt++, Y = ft * B / T * P.between(0.92, 1.08);
+      const I = pt++, Y = ft * B / q * P.between(0.92, 1.08);
       for (let Z = 1; Z < rt.points.length; Z++) {
         const H = rt.points[Z - 1], L = rt.points[Z];
         U.push({
-          start: dt(H[0] / c, H[1] / h, q, n, e),
-          end: dt(L[0] / c, L[1] / h, q, n, e),
+          start: dt(H[0] / c, H[1] / h, A, n, e),
+          end: dt(L[0] / c, L[1] / h, A, n, e),
           color: rt.color,
           radius: Y,
           opacity: yt * P.between(0.94, 1.06),
@@ -264,9 +264,9 @@ async function Zt(d, t, n, i = 420, e = "cover", s = "watercolor", l = "auto", r
         const ut = Math.max(1e-3, Math.hypot(N, J));
         N /= ut, J /= ut;
       }
-      const Ft = V >= 3 ? 1.16 - _ * 0.38 : 1, At = Pt * Ft * P.between(s === "oil" ? 0.84 : 0.72, s === "oil" ? 1.18 : 1.28), $t = ot >= 5 ? 2 : s === "oil" ? 6 : 5, ht = [], Mt = Lt(E.data, c, h, L, et), zt = [0.3, 0.26, 0.2, 0.14, 0.1][V] * (1.3 - p.boundaryFidelity * 0.55) * (1.22 - v * 0.42), qt = (C) => {
+      const Ft = V >= 3 ? 1.16 - _ * 0.38 : 1, Tt = Pt * Ft * P.between(s === "oil" ? 0.84 : 0.72, s === "oil" ? 1.18 : 1.28), $t = ot >= 5 ? 2 : s === "oil" ? 6 : 5, ht = [], Mt = Lt(E.data, c, h, L, et), zt = [0.3, 0.26, 0.2, 0.14, 0.1][V] * (1.3 - p.boundaryFidelity * 0.55) * (1.22 - v * 0.42), At = (C) => {
         let tt = 0, z = 0;
-        for (let nt = 3; nt <= At * 0.5; nt += 3) {
+        for (let nt = 3; nt <= Tt * 0.5; nt += 3) {
           const ut = L + N * nt * C, Wt = et + J * nt * C;
           if (ut < 1 || ut >= c - 1 || Wt < 1 || Wt >= h - 1) break;
           const Rt = Lt(E.data, c, h, ut, Wt);
@@ -276,9 +276,9 @@ async function Zt(d, t, n, i = 420, e = "cover", s = "watercolor", l = "auto", r
             tt = nt, z = 0;
         }
         return tt;
-      }, xt = qt(-1), Ot = qt(1);
-      if (xt + Ot < Math.max(E.radius * 2.4, At * 0.28)) continue;
-      const Tt = (s === "oil" ? 0.055 : 0.12) * (0.35 + p.strokeCurvature * 1.9), Ut = P.between(-Tt, Tt);
+      }, xt = At(-1), Ot = At(1);
+      if (xt + Ot < Math.max(E.radius * 2.4, Tt * 0.28)) continue;
+      const qt = (s === "oil" ? 0.055 : 0.12) * (0.35 + p.strokeCurvature * 1.9), Ut = P.between(-qt, qt);
       for (let C = 0; C <= $t; C++) {
         const tt = -xt + (xt + Ot) * C / $t, z = Math.sin(C / $t * Math.PI) * Ut * (xt + Ot);
         ht.push([L + N * tt - J * z, et + J * tt + N * z]);
@@ -287,8 +287,8 @@ async function Zt(d, t, n, i = 420, e = "cover", s = "watercolor", l = "auto", r
       if (ht.some((C) => C[0] < bt || C[0] > c - bt || C[1] < bt || C[1] > h - bt)) continue;
       const Qt = E.edgeOnly ? Mt.map((C) => C * 0.8) : Mt, Bt = [], Xt = pt++;
       for (let C = 1; C < ht.length; C++) {
-        const tt = dt(ht[C - 1][0] / c, ht[C - 1][1] / h, q, n, e), z = dt(ht[C][0] / c, ht[C][1] / h, q, n, e);
-        Bt.push({ start: tt, end: z, color: Qt, radius: yt * Ft / T * P.between(0.88, 1.12), opacity: E.opacity * (0.88 + _ * 0.18) * P.between(0.9, 1.1), water: E.water * P.between(0.85, 1.15), layer: ot, strokeId: Xt });
+        const tt = dt(ht[C - 1][0] / c, ht[C - 1][1] / h, A, n, e), z = dt(ht[C][0] / c, ht[C][1] / h, A, n, e);
+        Bt.push({ start: tt, end: z, color: Qt, radius: yt * Ft / q * P.between(0.88, 1.12), opacity: E.opacity * (0.88 + _ * 0.18) * P.between(0.9, 1.1), water: E.water * P.between(0.85, 1.15), layer: ot, strokeId: Xt });
       }
       K.push(Bt);
     }
@@ -298,8 +298,8 @@ async function Zt(d, t, n, i = 420, e = "cover", s = "watercolor", l = "auto", r
     }
     K.forEach((I) => U.push(...I)), X.push(U.length);
   });
-  const lt = dt(0, 0, q, n, e), ct = dt(1, 1, q, n, e);
-  return { segments: U, sourceAspect: q, layerEnds: X, bounds: [Math.min(lt[0], ct[0]), Math.min(lt[1], ct[1]), Math.max(lt[0], ct[0]), Math.max(lt[1], ct[1])] };
+  const lt = dt(0, 0, A, n, e), ct = dt(1, 1, A, n, e);
+  return { segments: U, sourceAspect: A, layerEnds: X, bounds: [Math.min(lt[0], ct[0]), Math.min(lt[1], ct[1]), Math.max(lt[0], ct[0]), Math.max(lt[1], ct[1])] };
 }
 const _t = {
   mode: "watercolor",
@@ -393,7 +393,7 @@ class se {
   imageRequest = 0;
   async setImage(t) {
     const n = ++this.imageRequest;
-    this.source = t, this.timeline?.kill(), this.cancelCompletion(), this.cancelScrub(), this.progressState.progress = 0, this.setPhase("analyzing");
+    this.source = t, this.stopTimeline(), this.cancelCompletion(), this.cancelScrub(), this.progressState.progress = 0, this.resetPainting(), this.options.onProgress?.(0), this.setPhase("analyzing");
     const i = 1 + (Math.sqrt(F(this.options.detailMultiplier, 1, 10)) - 1) * (0.35 + F(this.options.sourceAccuracy) * 0.65), e = Math.min(720, Math.round(this.options.analysisResolution * i)), s = await Zt(t, this.seed, this.canvasAspect(), e, this.options.imageFit, this.options.mode, this.options.detailFocus, this.options.detailMap, {
       strokeEconomy: this.options.strokeEconomy,
       shapeSimplification: this.options.shapeSimplification,
@@ -414,7 +414,7 @@ class se {
       this.restart();
       return;
     }
-    this.timeline?.kill(), this.cancelCompletion(), this.cancelScrub();
+    this.stopTimeline(), this.cancelCompletion(), this.cancelScrub();
     const t = 1 - this.progressState.progress;
     this.timeline = Yt.to(this.progressState, {
       progress: 1,
@@ -430,15 +430,15 @@ class se {
     this.timeline?.pause();
   }
   restart(t = Dt()) {
-    if (this.timeline?.kill(), this.cancelCompletion(), this.cancelScrub(), this.seed = t, this.progressState.progress = 0, this.source) {
+    if (this.stopTimeline(), this.cancelCompletion(), this.cancelScrub(), this.seed = t, this.progressState.progress = 0, this.resetPainting(), this.options.onProgress?.(0), this.source) {
       const n = this.setImage(this.source), i = this.imageRequest;
       n.then(() => {
-        i === this.imageRequest && this.play();
+        i === this.imageRequest && (this.stopTimeline(), this.play());
       });
     }
   }
   seek(t) {
-    this.timeline?.kill(), this.cancelCompletion(), this.progressState.progress = F(t), this.scrubTarget = this.targetSegment(this.progressState.progress), this.scheduleScrub(), this.options.onProgress?.(this.progressState.progress);
+    this.stopTimeline(), this.cancelCompletion(), this.progressState.progress = F(t), this.scrubTarget = this.targetSegment(this.progressState.progress), this.scheduleScrub(), this.options.onProgress?.(this.progressState.progress);
   }
   setOptions(t) {
     const n = t.mode !== void 0 && t.mode !== this.options.mode, i = t.detailFocus !== void 0 && t.detailFocus !== this.options.detailFocus || t.detailMap !== void 0 && t.detailMap !== this.options.detailMap, e = n || i || ["analysisResolution", "strokeEconomy", "shapeSimplification", "strokeLength", "strokeWidth", "boundaryFidelity", "detailBudget", "detailMultiplier", "sourceAccuracy", "detailPrecision", "strokeCurvature"].some((o) => t[o] !== void 0), s = t.paperColor !== void 0 || t.paperRoughness !== void 0 || t.granulation !== void 0 || t.bloom !== void 0 || t.transparency !== void 0 || t.paintLoad !== void 0 || t.dryBrush !== void 0 || t.bristleStrength !== void 0 || t.gloss !== void 0 || t.renderQuality !== void 0, l = this.progressState.progress, r = !!this.timeline?.isActive();
@@ -541,6 +541,9 @@ class se {
   cancelCompletion() {
     this.timelineFinished = !1, this.completionFrame && (cancelAnimationFrame(this.completionFrame), this.completionFrame = 0);
   }
+  stopTimeline() {
+    this.timeline?.kill(), this.timeline = void 0;
+  }
   cancelScrub() {
     this.scrubFrame && (cancelAnimationFrame(this.scrubFrame), this.scrubFrame = 0);
   }
@@ -576,8 +579,8 @@ class se {
     }
     const h = Math.max(0.7, s.radius * this.height), k = s.color.map((v) => Math.round(F(v) * 255)), y = this.mixProfile(o, k), g = this.averageColors(y), p = F(s.opacity) * (0.55 + this.options.paintLoad * 0.65) * (m === "dry" ? 0.62 : 1), M = 0.45 + this.options.granulation * 0.85, f = g.map((v) => Math.round(v * 0.55)), u = g.map((v) => Math.round(v + (255 - v) * 0.42));
     if (i.save(), i.lineCap = "round", i.lineJoin = "round", this.plan) {
-      const [v, w, A, D] = this.plan.bounds;
-      i.beginPath(), i.rect(v * this.width, w * this.height, (A - v) * this.width, (D - w) * this.height), i.clip();
+      const [v, w, T, D] = this.plan.bounds;
+      i.beginPath(), i.rect(v * this.width, w * this.height, (T - v) * this.width, (D - w) * this.height), i.clip();
     }
     i.globalCompositeOperation = "source-over", i.fillStyle = `rgba(${f[0]},${f[1]},${f[2]},${0.1 * p * M})`, i.filter = l < 0.5 ? "none" : `blur(${Math.min(2.2, h * 0.055)}px)`, this.fillOilBody(i, this.offsetPath(o, h * 0.14 * M, h * 0.16 * M), h * (1 + 0.07 * M), m, e.next() * 9), i.fill(), i.filter = "none";
     const x = this.oilGradient(i, o, y, 0.36 * p);
@@ -586,7 +589,7 @@ class se {
     for (let v = 0; v < b; v++) {
       const w = (v / (b - 1) - 0.5) * h * 1.72 + (e.next() - 0.5) * h * 0.1;
       if (m === "dry" && e.next() < 0.28) continue;
-      const A = y[Math.min(y.length - 1, Math.floor(e.next() * y.length))], D = (v / (b - 1) - 0.5) * 0.16 + (e.next() - 0.5) * 0.06, W = A.map((R) => Math.round(F(R / 255 + D) * 255));
+      const T = y[Math.min(y.length - 1, Math.floor(e.next() * y.length))], D = (v / (b - 1) - 0.5) * 0.16 + (e.next() - 0.5) * 0.06, W = T.map((R) => Math.round(F(R / 255 + D) * 255));
       i.strokeStyle = `rgba(${W[0]},${W[1]},${W[2]},${(0.06 + e.next() * 0.22) * S})`, i.lineWidth = Math.max(0.3, h * (0.022 + e.next() * 0.052)), this.strokePath(i, this.offsetPath(o, w, 0)), i.stroke();
     }
     i.globalCompositeOperation = "screen", i.strokeStyle = `rgba(${u[0]},${u[1]},${u[2]},${0.28 * p * M * this.options.gloss})`, i.lineWidth = Math.max(0.45, h * 0.13 * M), this.strokePath(i, this.offsetPath(o, -h * 0.58 * M, -h * 0.05 * M)), i.stroke(), i.globalCompositeOperation = "multiply", i.strokeStyle = `rgba(${f[0]},${f[1]},${f[2]},${0.12 * p * M})`, i.lineWidth = Math.max(0.4, h * 0.1 * M), this.strokePath(i, this.offsetPath(o, h * 0.62 * M, h * 0.04 * M)), i.stroke(), this.paintOilSurface(i, o, h, y, e, M, p), i.globalCompositeOperation = "source-over", m === "loaded" && e.next() < 0.12 + this.options.paintLoad * 0.34 && this.paintOilTrails(i, o, h, g, e, p), i.restore();
@@ -686,8 +689,8 @@ class se {
     }
     const M = Math.max(1, Math.min(9, Math.round(a.length * 0.24 * r)));
     for (let f = 0; f < M; f++) {
-      const u = Math.min(a.length - 2, Math.floor(l.next() * (a.length - 1))), x = a[u], S = a[u + 1], b = S[0] - x[0], v = S[1] - x[1], w = Math.max(1, Math.hypot(b, v)), A = -v / w, D = b / w, W = (l.next() - 0.5) * m * 1.35;
-      this.paperHeight(x[0], x[1]) < 0.5 && (e.fillStyle = `rgba(${Math.round(c[0] * 0.64)},${Math.round(c[1] * 0.64)},${Math.round(c[2] * 0.64)},${h * (0.18 + l.next() * 0.25)})`, e.beginPath(), e.arc(x[0] + A * W, x[1] + D * W, Math.max(0.3, m * (0.025 + l.next() * 0.07)), 0, Math.PI * 2), e.fill());
+      const u = Math.min(a.length - 2, Math.floor(l.next() * (a.length - 1))), x = a[u], S = a[u + 1], b = S[0] - x[0], v = S[1] - x[1], w = Math.max(1, Math.hypot(b, v)), T = -v / w, D = b / w, W = (l.next() - 0.5) * m * 1.35;
+      this.paperHeight(x[0], x[1]) < 0.5 && (e.fillStyle = `rgba(${Math.round(c[0] * 0.64)},${Math.round(c[1] * 0.64)},${Math.round(c[2] * 0.64)},${h * (0.18 + l.next() * 0.25)})`, e.beginPath(), e.arc(x[0] + T * W, x[1] + D * W, Math.max(0.3, m * (0.025 + l.next() * 0.07)), 0, Math.PI * 2), e.fill());
     }
     e.globalCompositeOperation = "destination-out", e.fillStyle = `rgba(0,0,0,${0.02 + 0.035 * this.options.paperRoughness})`;
     for (let f = 0; f < Math.min(6, M); f++) {
@@ -764,7 +767,7 @@ class se {
     this.phase !== t && (this.phase = t, this.options.onPhaseChange?.(t));
   }
   destroy() {
-    this.destroyed = !0, this.imageRequest++, this.timeline?.kill(), this.cancelCompletion(), this.cancelScrub(), this.clearCheckpoints(), this.resizeObserver.disconnect(), delete this.canvas.dataset.watercolorSegments, delete this.canvas.dataset.watercolorLayerEnds, delete this.canvas.dataset.watercolorTargetSegment, delete this.canvas.dataset.watercolorCpuMs, delete this.canvas.dataset.watercolorActiveStrokes, delete this.canvas.dataset.watercolorStrokeProgress, delete this.canvas.dataset.watercolorTimelineWork;
+    this.destroyed = !0, this.imageRequest++, this.stopTimeline(), this.cancelCompletion(), this.cancelScrub(), this.clearCheckpoints(), this.resizeObserver.disconnect(), delete this.canvas.dataset.watercolorSegments, delete this.canvas.dataset.watercolorLayerEnds, delete this.canvas.dataset.watercolorTargetSegment, delete this.canvas.dataset.watercolorCpuMs, delete this.canvas.dataset.watercolorActiveStrokes, delete this.canvas.dataset.watercolorStrokeProgress, delete this.canvas.dataset.watercolorTimelineWork;
   }
 }
 export {

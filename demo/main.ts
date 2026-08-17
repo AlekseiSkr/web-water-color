@@ -138,6 +138,9 @@ app.querySelector<HTMLInputElement>('input[type=file]')!.onchange = event => {
 };
 repaintButton.onclick = () => {
   window.clearTimeout(plannerTimer);
+  timeline.value = '0';
+  scrollValue = 0;
+  scrollProgress.textContent = '0%';
   const pending = {...pendingPlannerOptions};
   for (const key of Object.keys(pendingPlannerOptions)) delete pendingPlannerOptions[key as keyof WatercolorOptions];
   repaintButton.classList.remove('settings-changed');

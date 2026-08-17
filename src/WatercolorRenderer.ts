@@ -60,7 +60,7 @@ export class WatercolorRenderer implements WatercolorControls {
   }
 
   async setImage(source:ImageSource){
-    const request=++this.imageRequest;this.source=source;this.timeline?.kill();this.cancelCompletion();this.cancelScrub();this.progressState.progress=0;this.setPhase('analyzing');
+    const request=++this.imageRequest;this.source=source;this.stopTimeline();this.cancelCompletion();this.cancelScrub();this.progressState.progress=0;this.resetPainting();this.options.onProgress?.(0);this.setPhase('analyzing');
     const detailScale=1+(Math.sqrt(clamp(this.options.detailMultiplier,1,10))-1)*(.35+clamp(this.options.sourceAccuracy)*.65),analysisResolution=Math.min(720,Math.round(this.options.analysisResolution*detailScale));
     const plan=await planStrokes(source,this.seed,this.canvasAspect(),analysisResolution,this.options.imageFit,this.options.mode,this.options.detailFocus,this.options.detailMap,{
       strokeEconomy:this.options.strokeEconomy,shapeSimplification:this.options.shapeSimplification,strokeLength:this.options.strokeLength,strokeWidth:this.options.strokeWidth,
@@ -70,17 +70,18 @@ export class WatercolorRenderer implements WatercolorControls {
   }
   play(){
     if(!this.plan||this.timeline?.isActive())return;if(this.progressState.progress>=1){this.restart();return;}
-    this.timeline?.kill();this.cancelCompletion();this.cancelScrub();const remaining=1-this.progressState.progress;
+    this.stopTimeline();this.cancelCompletion();this.cancelScrub();const remaining=1-this.progressState.progress;
     this.timeline=gsap.to(this.progressState,{progress:1,duration:this.options.duration*remaining,ease:'none',onUpdate:()=>this.updatePainting(),
       onComplete:()=>{this.timelineFinished=true;this.scheduleCompletion();}});
     this.timeline.timeScale(this.options.speed);
   }
   pause(){this.timeline?.pause();}
   restart(seed=randomSeed()){
-    this.timeline?.kill();this.cancelCompletion();this.cancelScrub();this.seed=seed;this.progressState.progress=0;if(this.source){const rebuild=this.setImage(this.source),request=this.imageRequest;void rebuild.then(()=>{if(request===this.imageRequest)this.play();});}
+    this.stopTimeline();this.cancelCompletion();this.cancelScrub();this.seed=seed;this.progressState.progress=0;this.resetPainting();this.options.onProgress?.(0);
+    if(this.source){const rebuild=this.setImage(this.source),request=this.imageRequest;void rebuild.then(()=>{if(request===this.imageRequest){this.stopTimeline();this.play();}});}
   }
   seek(progress:number){
-    this.timeline?.kill();this.cancelCompletion();this.progressState.progress=clamp(progress);this.scrubTarget=this.targetSegment(this.progressState.progress);this.scheduleScrub();
+    this.stopTimeline();this.cancelCompletion();this.progressState.progress=clamp(progress);this.scrubTarget=this.targetSegment(this.progressState.progress);this.scheduleScrub();
     this.options.onProgress?.(this.progressState.progress);
   }
   setOptions(options:Partial<WatercolorOptions>){
@@ -143,6 +144,7 @@ export class WatercolorRenderer implements WatercolorControls {
   private cancelCompletion(){
     this.timelineFinished=false;if(this.completionFrame){cancelAnimationFrame(this.completionFrame);this.completionFrame=0;}
   }
+  private stopTimeline(){this.timeline?.kill();this.timeline=undefined;}
   private cancelScrub(){if(this.scrubFrame){cancelAnimationFrame(this.scrubFrame);this.scrubFrame=0;}}
   private scheduleScrub(){
     if(this.scrubFrame)return;this.scrubFrame=requestAnimationFrame(()=>{this.scrubFrame=0;if(this.destroyed||!this.plan)return;
@@ -307,5 +309,5 @@ export class WatercolorRenderer implements WatercolorControls {
   private hex(value:string):[number,number,number]{const normalized=value.replace('#','');const full=normalized.length===3?normalized.split('').map(c=>c+c).join(''):normalized;const n=parseInt(full,16);return[(n>>16)&255,(n>>8)&255,n&255];}
   private canvasAspect(){return Math.max(1,this.canvas.clientWidth||this.canvas.width)/Math.max(1,this.canvas.clientHeight||this.canvas.height);}
   private setPhase(phase:'analyzing'|'painting'|'drying'|'complete'){if(this.phase===phase)return;this.phase=phase;this.options.onPhaseChange?.(phase);}
-  destroy(){this.destroyed=true;this.imageRequest++;this.timeline?.kill();this.cancelCompletion();this.cancelScrub();this.clearCheckpoints();this.resizeObserver.disconnect();delete this.canvas.dataset.watercolorSegments;delete this.canvas.dataset.watercolorLayerEnds;delete this.canvas.dataset.watercolorTargetSegment;delete this.canvas.dataset.watercolorCpuMs;delete this.canvas.dataset.watercolorActiveStrokes;delete this.canvas.dataset.watercolorStrokeProgress;delete this.canvas.dataset.watercolorTimelineWork;}
+  destroy(){this.destroyed=true;this.imageRequest++;this.stopTimeline();this.cancelCompletion();this.cancelScrub();this.clearCheckpoints();this.resizeObserver.disconnect();delete this.canvas.dataset.watercolorSegments;delete this.canvas.dataset.watercolorLayerEnds;delete this.canvas.dataset.watercolorTargetSegment;delete this.canvas.dataset.watercolorCpuMs;delete this.canvas.dataset.watercolorActiveStrokes;delete this.canvas.dataset.watercolorStrokeProgress;delete this.canvas.dataset.watercolorTimelineWork;}
 }

@@ -47,6 +47,7 @@ export declare class WatercolorRenderer implements WatercolorControls {
     private renderLiveStrokes;
     private depositBudget;
     private cancelCompletion;
+    private stopTimeline;
     private cancelScrub;
     private scheduleScrub;
     private scheduleCompletion;

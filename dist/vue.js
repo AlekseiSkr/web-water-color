@@ -1,5 +1,5 @@
 import { defineComponent as s, ref as u, onMounted as l, watch as o, onBeforeUnmount as i, h as c } from "vue";
-import { W as p } from "./WatercolorRenderer-DAn2omau.js";
+import { W as p } from "./WatercolorRenderer-B9fgDtG4.js";
 const f = s({
   name: "Watercolor",
   props: {

@@ -103,17 +103,17 @@ export async function planStrokes(source:ImageSource,seed:number,targetAspect:nu
     layerEnds.push(segments.length);
   };
   if(mode==='oil'){
-    appendRegionPass(0,coarseData,9*spacingScale,3,23*widthScale,3,.68,0);
-    appendRegionPass(1,massData,6*spacingScale,Math.round(5-tune.shapeSimplification),15*widthScale,4,.76,0);
+    appendRegionPass(0,coarseData,7*spacingScale,5,15*widthScale,3,.82,0);
+    appendRegionPass(1,massData,5*spacingScale,Math.round(8-tune.shapeSimplification*2),9*widthScale,4,.88,0);
   }else{
     appendRegionPass(0,coarseData,9*spacingScale,3,24*widthScale,3,.027,.94);
     appendRegionPass(1,massData,6*spacingScale,Math.round(5-tune.shapeSimplification),15*widthScale,4,.038,.78);
   }
   const passes=mode==='oil'?[
-    {data:formData,field:0,spacing:21,radius:8.6,length:80,opacity:.80,water:0,chance:.66,edgeOnly:false},
-    {data:formData,field:0,spacing:15,radius:5.7,length:58,opacity:.85,water:0,chance:.58,edgeOnly:false},
-    {data:refinedData,field:1,spacing:10,radius:3.3,length:38,opacity:.90,water:0,chance:.48,edgeOnly:false},
-    {data,field:2,spacing:7,radius:1.48,length:16,opacity:.94,water:0,chance:.98,edgeOnly:true},
+    {data:formData,field:0,spacing:16,radius:6.8,length:120,opacity:.89,water:0,chance:.68,edgeOnly:false},
+    {data:formData,field:0,spacing:11,radius:4.3,length:90,opacity:.92,water:0,chance:.62,edgeOnly:false},
+    {data:refinedData,field:1,spacing:7.5,radius:2.45,length:60,opacity:.95,water:0,chance:.52,edgeOnly:false},
+    {data,field:2,spacing:5.5,radius:1.08,length:28,opacity:.98,water:0,chance:.94,edgeOnly:true},
   ]:[
     {data:formData,field:0,spacing:20,radius:8.0,length:74,opacity:.052,water:.55,chance:.68,edgeOnly:false},
     {data:formData,field:0,spacing:14,radius:5.1,length:52,opacity:.058,water:.43,chance:.60,edgeOnly:false},
@@ -137,20 +137,20 @@ export async function planStrokes(source:ImageSource,seed:number,targetAspect:nu
         const baseAngles=[.08,-.38,.10,-.18,.22,0.,0.],weights=[.76,.56,.48,.38,.24,.08,0.],weight=weights[layer],angle=baseAngles[layer];
         tx=tx*(1-weight)+Math.cos(angle)*weight;ty=ty*(1-weight)+Math.sin(angle)*weight;const length=Math.max(.001,Math.hypot(tx,ty));tx/=length;ty/=length;
       }
-      const detailScale=passIndex>=3?1.16-detailWeight*.38:1,totalLength=plannedLength*detailScale*random.between(mode==='oil' ? .84 : .72,mode==='oil' ? 1.18 : 1.28),steps=layer>=5?2:(mode==='oil'?6:5),points:Array<[number,number]>=[];
-      const centerColor=pixel(pass.data,width,height,px,py),coherence=[.30,.26,.20,.14,.10][passIndex]*(1.30-tune.boundaryFidelity*.55)*(1.22-sourceAccuracy*.42);
+      const detailScale=passIndex>=3?1.16-detailWeight*.38:1,totalLength=plannedLength*detailScale*random.between(mode==='oil' ? .92 : .72,mode==='oil' ? 1.22 : 1.28),steps=layer>=5?(mode==='oil'?3:2):(mode==='oil'?7:5),points:Array<[number,number]>=[];
+      const centerColor=pixel(pass.data,width,height,px,py),coherence=[.30,.26,.20,.14,.10][passIndex]*(1.30-tune.boundaryFidelity*.55)*(1.22-sourceAccuracy*.42)*(mode==='oil'?1.22:1);
       const extent=(sign:number)=>{let accepted=0,misses=0;for(let distance=3;distance<=totalLength*.5;distance+=3){const sampleX=px+tx*distance*sign,sampleY=py+ty*distance*sign;
         if(sampleX<1||sampleX>=width-1||sampleY<1||sampleY>=height-1)break;const candidate=pixel(pass.data,width,height,sampleX,sampleY),difference=Math.hypot(candidate[0]-centerColor[0],candidate[1]-centerColor[1],candidate[2]-centerColor[2]);
         if(difference>coherence){if(++misses>=2)break;}else{accepted=distance;misses=0;}}return accepted;};
-      const behind=extent(-1),ahead=extent(1);if(behind+ahead<Math.max(pass.radius*2.4,totalLength*.28))continue;
+      const behind=extent(-1),ahead=extent(1);if(behind+ahead<Math.max(pass.radius*(mode==='oil'?3.6:2.4),totalLength*(mode==='oil'?.34:.28)))continue;
       const curvatureRange=(mode==='oil'?.055:.12)*(.35+tune.strokeCurvature*1.9),curvature=random.between(-curvatureRange,curvatureRange);
       for(let s=0;s<=steps;s++){const d=-behind+(behind+ahead)*s/steps,bend=Math.sin(s/steps*Math.PI)*curvature*(behind+ahead);points.push([px+tx*d-ty*bend,py+ty*d+tx*bend]);}
-      const strokeMargin=radius*detailScale*(mode==='oil'?3.2:1.45);
+      const strokeMargin=radius*detailScale*(mode==='oil'?1.75:1.45);
       if(points.some(point=>point[0]<strokeMargin||point[0]>width-strokeMargin||point[1]<strokeMargin||point[1]>height-strokeMargin))continue;
-      const color:[number,number,number]=pass.edgeOnly?centerColor.map(v=>v*.80) as [number,number,number]:centerColor;
       const stroke:PaintSegment[]=[],strokeId=nextStrokeId++;
       for(let p=1;p<points.length;p++){const a=mapPoint(points[p-1][0]/width,points[p-1][1]/height,sourceAspect,targetAspect,fit),b=mapPoint(points[p][0]/width,points[p][1]/height,sourceAspect,targetAspect,fit);
-        stroke.push({start:a,end:b,color,radius:radius*detailScale/minSide*random.between(.88,1.12),opacity:pass.opacity*(.88+detailWeight*.18)*random.between(.9,1.1),water:pass.water*random.between(.85,1.15),layer,strokeId});}
+        const sampled=pixel(pass.data,width,height,(points[p-1][0]+points[p][0])*.5,(points[p-1][1]+points[p][1])*.5),segmentColor:[number,number,number]=sampled;
+        stroke.push({start:a,end:b,color:segmentColor,radius:radius*detailScale/minSide*random.between(.88,1.12),opacity:pass.opacity*(.88+detailWeight*.18)*random.between(.9,1.1),water:pass.water*random.between(.85,1.15),layer,strokeId});}
       strokes.push(stroke);
     }
     for(let i=strokes.length-1;i>0;i--){const j=Math.floor(random.next()*(i+1));[strokes[i],strokes[j]]=[strokes[j],strokes[i]];}

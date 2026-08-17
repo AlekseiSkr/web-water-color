@@ -1,6 +1,6 @@
 import { jsx as m } from "react/jsx-runtime";
 import { forwardRef as f, useRef as a, useImperativeHandle as d, useEffect as s } from "react";
-import { W as y } from "./WatercolorRenderer-DAn2omau.js";
+import { W as y } from "./WatercolorRenderer-B9fgDtG4.js";
 const R = f(function({ src: t, autoplay: c = !0, className: o, style: l, ...n }, i) {
   const u = a(null), r = a(null);
   return d(i, () => ({

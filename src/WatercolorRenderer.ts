@@ -33,6 +33,8 @@ export class WatercolorRenderer implements WatercolorControls {
   private context:CanvasRenderingContext2D;
   private pigment=document.createElement('canvas');
   private pigmentContext=this.pigment.getContext('2d')!;
+  private oilPigment=document.createElement('canvas');
+  private oilPigmentContext=this.oilPigment.getContext('2d',{willReadFrequently:true})!;
   private livePaint=document.createElement('canvas');
   private livePaintContext=this.livePaint.getContext('2d')!;
   private paper=document.createElement('canvas');
@@ -54,7 +56,7 @@ export class WatercolorRenderer implements WatercolorControls {
   private timelineFinished=false;
   private scrubFrame=0;
   private scrubTarget=0;
-  private checkpoints:Array<{segment:number;surface:HTMLCanvasElement}>=[];
+  private checkpoints:Array<{segment:number;surface:HTMLCanvasElement;oilPigment:HTMLCanvasElement}>=[];
   private cpuPaintMs=0;
   private timelineWork=new Float64Array([0]);
   private imageRequest=0;
@@ -108,7 +110,7 @@ export class WatercolorRenderer implements WatercolorControls {
     const width=aspect>=1?longest:Math.max(1,Math.round(longest*aspect)),height=aspect>=1?Math.max(1,Math.round(longest/aspect)):longest;
     const exportCanvas=document.createElement('canvas');exportCanvas.width=width;exportCanvas.height=height;exportCanvas.style.width=`${width}px`;exportCanvas.style.height=`${height}px`;
     const renderer=new WatercolorRenderer(exportCanvas,{...this.options,onProgress:undefined,onComplete:undefined,onPhaseChange:undefined,seed:this.seed,pixelRatio:1});
-    renderer.resizeObserver.disconnect();renderer.width=width;renderer.height=height;exportCanvas.width=width;exportCanvas.height=height;renderer.pigment.width=width;renderer.pigment.height=height;renderer.livePaint.width=width;renderer.livePaint.height=height;renderer.createPaper();
+    renderer.resizeObserver.disconnect();renderer.width=width;renderer.height=height;exportCanvas.width=width;exportCanvas.height=height;renderer.pigment.width=width;renderer.pigment.height=height;renderer.oilPigment.width=width;renderer.oilPigment.height=height;renderer.livePaint.width=width;renderer.livePaint.height=height;renderer.createPaper();
     try{
       await renderer.setImage(this.source);renderer.seek(this.progressState.progress);
       await new Promise<void>(resolve=>{const wait=()=>{if(!renderer.scrubFrame)resolve();else requestAnimationFrame(wait);};wait();});
@@ -149,7 +151,7 @@ export class WatercolorRenderer implements WatercolorControls {
   }
   private renderLiveStrokes(target:number){
     this.livePaintContext.clearRect(0,0,this.width,this.height);if(!this.plan)return;let index=this.drawnSegments,painted=0,scanned=0,brushProgress=0;
-    const activeLimit=Math.max(4,Math.min(18,Math.round(this.options.strokesPerFrame*.65)));
+    const activeLimit=this.options.mode==='oil'?Math.max(2,Math.min(5,Math.round(this.options.strokesPerFrame*.22))):Math.max(4,Math.min(18,Math.round(this.options.strokesPerFrame*.65)));
     while(index<this.plan.segments.length&&painted<activeLimit&&scanned<64){const end=this.strokeEnd(index),span=this.strokeRevealSpan(end-index),raw=(target-(end-span))/span;
       if(raw>0){const eased=cubicBezierEase(clamp(raw),this.options.strokeEase);brushProgress=eased;this.paintNextStroke(index,false,this.livePaintContext,eased);painted++;}index=end;scanned++;}
     this.canvas.dataset.watercolorActiveStrokes=String(painted);this.canvas.dataset.watercolorStrokeProgress=brushProgress.toFixed(3);
@@ -180,44 +182,59 @@ export class WatercolorRenderer implements WatercolorControls {
   private paintOilStroke(segments:PaintSegment[],strokeId:number,ctx=this.pigmentContext){
     if(!segments.length)return;const random=new Random(this.seed+strokeId*31.77),first=segments[0],quality=this.qualityFactor();
     const rawPoints:Array<[number,number]>=[first.start,...segments.map(segment=>segment.end)].map(point=>[point[0]*this.width,point[1]*this.height]);
-    let points=this.smoothPath(rawPoints,5);const characterRoll=random.next();let character:'loaded'|'dry'|'tap'='loaded';
+    let points=this.smoothPath(rawPoints,5);const characterRoll=random.next();let character:'loaded'|'knife'|'dry'|'tap'='loaded';
     const dry=clamp(this.options.dryBrush);if(first.layer>=6)character=characterRoll<.45+dry*.4?'tap':'dry';else if(first.layer===5)character=characterRoll<.12+dry*.42?'tap':(characterRoll<.24+dry*.52?'dry':'loaded');else if(first.layer===4&&characterRoll<.05+dry*.35)character='dry';else if(characterRoll<.02+dry*.25)character='dry';
+    if(character==='loaded'&&first.layer<3&&characterRoll>.91+.05*dry)character='knife';
     if(character==='tap'){const start=Math.floor(points.length*.34),end=Math.ceil(points.length*.66);points=points.slice(start,end);}
-    const radius=Math.max(.7,first.radius*this.height),source=first.color.map(value=>Math.round(clamp(value)*255)) as [number,number,number];
-    const profile=this.mixProfile(points,source),mixed=this.averageColors(profile),opacity=clamp(first.opacity)*(.55+this.options.paintLoad*.65)*(character==='dry' ? .62 : 1);
-    const depth=.45+this.options.granulation*.85;
-    const dark=mixed.map(value=>Math.round(value*.55)) as [number,number,number],light=mixed.map(value=>Math.round(value+(255-value)*.42)) as [number,number,number];
+    const radius=Math.max(.7,first.radius*this.height),sourceColors=segments.map(segment=>segment.color.map(value=>Math.round(clamp(value)*255)) as [number,number,number]);
+    const lanes=this.oilLaneProfiles(points,sourceColors,radius,random),profile=this.averageOilProfiles(lanes),mixed=this.averageColors(profile),opacity=clamp(first.opacity)*(.78+this.options.paintLoad*.42)*(character==='dry' ? .66 : 1);
+    const depth=.40+this.options.granulation*.90,committed=ctx===this.pigmentContext;
+    const dark=mixed.map(value=>Math.round(value*.58)) as [number,number,number];
+    if(committed)this.depositOilPigment(points,radius,character,lanes,opacity,random.next()*9);
     ctx.save();ctx.lineCap='round';ctx.lineJoin='round';
     if(this.plan){const [left,top,right,bottom]=this.plan.bounds;ctx.beginPath();ctx.rect(left*this.width,top*this.height,(right-left)*this.width,(bottom-top)*this.height);ctx.clip();}
-    // Cast shadow makes later strokes visibly stand above earlier paint.
+    // A displaced, low-frequency shadow locates the deposit above earlier paint.
     ctx.globalCompositeOperation='source-over';ctx.fillStyle=`rgba(${dark[0]},${dark[1]},${dark[2]},${.10*opacity*depth})`;
     ctx.filter=quality<.5?'none':`blur(${Math.min(2.2,radius*.055)}px)`;this.fillOilBody(ctx,this.offsetPath(points,radius*.14*depth,radius*.16*depth),radius*(1+.07*depth),character,random.next()*9);ctx.fill();ctx.filter='none';
-    // A soft outer load feathers the body before the denser center is applied.
-    const gradient=this.oilGradient(ctx,points,profile,.36*opacity);ctx.fillStyle=gradient;ctx.filter=quality<.5?'none':`blur(${Math.min(1.35,radius*.035)}px)`;
-    this.fillOilBody(ctx,points,radius*1.035,character,random.next()*9);ctx.fill();ctx.filter='none';
-    ctx.fillStyle=this.oilGradient(ctx,points,profile,(character==='dry' ? .58 : .90)*opacity);this.fillOilBody(ctx,points,radius*.92,character,random.next()*9);ctx.fill();
-    // Loaded hairs create parallel ridges across the full confident stroke.
-    const bristleAmount=clamp(this.options.bristleStrength),bristles=Math.max(2,Math.min(character==='dry' ? 18 : 14,Math.round(radius*(character==='dry' ? .82 : .52)*(.25+bristleAmount)*quality)));
-    for(let hair=0;hair<bristles;hair++){
-      const across=(hair/(bristles-1)-.5)*radius*1.72+(random.next()-.5)*radius*.10;
-      if(character==='dry'&&random.next()<.28)continue;
-      const carried=profile[Math.min(profile.length-1,Math.floor(random.next()*profile.length))],shade=(hair/(bristles-1)-.5)*.16+(random.next()-.5)*.06;
-      const hairColor=carried.map(value=>Math.round(clamp(value/255+shade)*255)) as [number,number,number];
-      ctx.strokeStyle=`rgba(${hairColor[0]},${hairColor[1]},${hairColor[2]},${(.06+random.next()*.22)*bristleAmount})`;ctx.lineWidth=Math.max(.3,radius*(.022+random.next()*.052));
-      this.strokePath(ctx,this.offsetPath(points,across,0));ctx.stroke();
+    if(character!=='dry'){
+      ctx.fillStyle=this.oilGradient(ctx,points,profile,(character==='knife'?.96:.90)*opacity);this.fillOilBody(ctx,points,radius*(character==='knife'?1:.94),character,random.next()*9);ctx.fill();
     }
-    // Raised top ridge catches light; the opposite groove stays dark.
-    ctx.globalCompositeOperation='screen';ctx.strokeStyle=`rgba(${light[0]},${light[1]},${light[2]},${.28*opacity*depth*this.options.gloss})`;ctx.lineWidth=Math.max(.45,radius*.13*depth);
-    this.strokePath(ctx,this.offsetPath(points,-radius*.58*depth,-radius*.05*depth));ctx.stroke();
-    ctx.globalCompositeOperation='multiply';ctx.strokeStyle=`rgba(${dark[0]},${dark[1]},${dark[2]},${.12*opacity*depth})`;ctx.lineWidth=Math.max(.4,radius*.10*depth);
-    this.strokePath(ctx,this.offsetPath(points,radius*.62*depth,radius*.04*depth));ctx.stroke();
+    // Each bristle lane carries a different mixture through an intersection.
+    const bristleAmount=clamp(this.options.bristleStrength),laneWidth=radius*1.72/lanes.length;
+    lanes.forEach((lane,laneIndex)=>{if(character==='dry'&&random.next()<.20)return;const across=(laneIndex/(lanes.length-1)-.5)*radius*1.64+(random.next()-.5)*radius*.06;
+      ctx.globalCompositeOperation='source-over';ctx.strokeStyle=this.oilGradient(ctx,points,lane,(character==='dry'?.58:.28+.24*bristleAmount)*opacity);ctx.lineWidth=Math.max(.45,laneWidth*(character==='dry'?.24+random.next()*.42:.54+random.next()*.34));
+      if(character==='dry')ctx.setLineDash([Math.max(1,radius*(.35+random.next()*.55)),Math.max(1,radius*(.18+random.next()*.45))]);this.strokePath(ctx,this.offsetPath(points,across,0));ctx.stroke();ctx.setLineDash([]);
+      // Relief is local to bristle channels, not a bright cartoon outline around the stroke.
+      if(character!=='dry'&&bristleAmount>.08){const laneColor=this.averageColors(lane),light=laneColor.map(value=>Math.round(value+(255-value)*.48)) as [number,number,number],laneDark=laneColor.map(value=>Math.round(value*.60)) as [number,number,number];
+        ctx.globalCompositeOperation='screen';ctx.strokeStyle=`rgba(${light[0]},${light[1]},${light[2]},${.18*depth*opacity*this.options.gloss})`;ctx.lineWidth=Math.max(.32,laneWidth*.17);this.strokePath(ctx,this.offsetPath(points,across-laneWidth*.16,-laneWidth*.05));ctx.stroke();
+        ctx.globalCompositeOperation='multiply';ctx.strokeStyle=`rgba(${laneDark[0]},${laneDark[1]},${laneDark[2]},${.085*depth*opacity})`;ctx.lineWidth=Math.max(.3,laneWidth*.13);this.strokePath(ctx,this.offsetPath(points,across+laneWidth*.18,laneWidth*.04));ctx.stroke();}
+    });
     this.paintOilSurface(ctx,points,radius,profile,random,depth,opacity);
     ctx.globalCompositeOperation='source-over';if(character==='loaded'&&random.next()<.12+this.options.paintLoad*.34)this.paintOilTrails(ctx,points,radius,mixed,random,opacity);ctx.restore();
   }
-  private mixProfile(points:Array<[number,number]>,source:[number,number,number]){
-    const fractions=this.options.renderQuality==='fast'?[0,.5,1]:this.options.renderQuality==='balanced'?[0,.33,.67,1]:[0,.25,.5,.75,1];return fractions.map(fraction=>{const index=Math.min(points.length-1,Math.round((points.length-1)*fraction)),point=points[index],pixel=this.pigmentContext.getImageData(clamp(Math.round(point[0]),0,this.width-1),clamp(Math.round(point[1]),0,this.height-1),1,1).data;
-      if(pixel[3]<=18)return source;const amount=clamp((pixel[3]/255)*(.12+this.options.bloom*.40),.06,.46);
-      return source.map((value,channel)=>Math.round(Math.exp(Math.log(Math.max(1,value))*(1-amount)+Math.log(Math.max(1,pixel[channel]))*amount))) as [number,number,number];});
+  private oilLaneProfiles(points:Array<[number,number]>,sourceColors:Array<[number,number,number]>,radius:number,random:Random){
+    const laneCount=this.options.renderQuality==='fast'?5:this.options.renderQuality==='balanced'?7:9,stationCount=this.options.renderQuality==='fast'?3:this.options.renderQuality==='balanced'?4:5,profiles:Array<Array<[number,number,number]>>=[];
+    for(let lane=0;lane<laneCount;lane++){const across=(lane/(laneCount-1)-.5)*radius*1.56,profile:Array<[number,number,number]>=[],carried:[number,number,number]=[...sourceColors[0]];
+      for(let station=0;station<stationCount;station++){const fraction=station/(stationCount-1),index=Math.min(points.length-1,Math.round((points.length-1)*fraction)),source=sourceColors[Math.min(sourceColors.length-1,Math.round((sourceColors.length-1)*fraction))],refreshed=this.mixPigments(carried,source,station===0?1:.24);carried[0]=refreshed[0];carried[1]=refreshed[1];carried[2]=refreshed[2];const sample=this.sampleOilPigment(this.offsetPath([points[Math.max(0,index-1)],points[index],points[Math.min(points.length-1,index+1)]],across,0)[1]);
+        if(sample.alpha>.05){const pickup=clamp(sample.alpha*(.055+this.options.bloom*.22)*(1-station/(stationCount*2))*(.82+random.next()*.32),.02,.28);const mixed=this.mixPigments(carried,sample.color,pickup);carried[0]=mixed[0];carried[1]=mixed[1];carried[2]=mixed[2];}
+        profile.push([...carried]);}
+      profiles.push(profile);}
+    return profiles;
+  }
+  private sampleOilPigment(point:[number,number]){
+    const pixel=this.oilPigmentContext.getImageData(clamp(Math.round(point[0]),0,this.width-1),clamp(Math.round(point[1]),0,this.height-1),1,1).data;
+    return {color:[pixel[0],pixel[1],pixel[2]] as [number,number,number],alpha:pixel[3]/255};
+  }
+  private mixPigments(a:[number,number,number],b:[number,number,number],amount:number):[number,number,number]{
+    return [0,1,2].map(channel=>{const ar=clamp(a[channel]/255,.004,1),br=clamp(b[channel]/255,.004,1),aks=(1-ar)*(1-ar)/(2*ar),bks=(1-br)*(1-br)/(2*br),ks=aks*(1-amount)+bks*amount,reflectance=1+ks-Math.sqrt(ks*ks+2*ks);return Math.round(clamp(reflectance)*255);}) as [number,number,number];
+  }
+  private averageOilProfiles(profiles:Array<Array<[number,number,number]>>){
+    const count=profiles[0].length;return Array.from({length:count},(_,index)=>this.averageColors(profiles.map(profile=>profile[index])));
+  }
+  private depositOilPigment(points:Array<[number,number]>,radius:number,character:'loaded'|'knife'|'dry'|'tap',lanes:Array<Array<[number,number,number]>>,opacity:number,phase:number){
+    const ctx=this.oilPigmentContext;ctx.save();ctx.lineCap='round';ctx.lineJoin='round';if(this.plan){const [left,top,right,bottom]=this.plan.bounds;ctx.beginPath();ctx.rect(left*this.width,top*this.height,(right-left)*this.width,(bottom-top)*this.height);ctx.clip();}
+    if(character!=='dry'){ctx.fillStyle=this.oilGradient(ctx,points,this.averageOilProfiles(lanes),Math.min(1,opacity*(character==='knife'?.96:.84)));this.fillOilBody(ctx,points,radius*(character==='knife'?1:.92),character,phase);ctx.fill();}
+    const laneWidth=radius*1.72/lanes.length;lanes.forEach((lane,index)=>{if(character==='dry'&&index%3===1)return;const across=(index/(lanes.length-1)-.5)*radius*1.62;ctx.strokeStyle=this.oilGradient(ctx,points,lane,Math.min(1,opacity*(character==='dry'?.70:.38)));ctx.lineWidth=Math.max(.5,laneWidth*(character==='dry'?.34:.72));if(character==='dry')ctx.setLineDash([Math.max(1,radius*.55),Math.max(1,radius*.32)]);this.strokePath(ctx,this.offsetPath(points,across,0));ctx.stroke();ctx.setLineDash([]);});ctx.restore();
   }
   private averageColors(colors:Array<[number,number,number]>):[number,number,number]{return[0,1,2].map(channel=>Math.round(colors.reduce((sum,color)=>sum+color[channel],0)/colors.length)) as [number,number,number];}
   private oilGradient(ctx:CanvasRenderingContext2D,points:Array<[number,number]>,colors:Array<[number,number,number]>,alpha:number){
@@ -246,12 +263,12 @@ export class WatercolorRenderer implements WatercolorControls {
     for(let i=1;i<points.length-1;i++){const midpoint:[number,number]=[(points[i][0]+points[i+1][0])*.5,(points[i][1]+points[i+1][1])*.5];ctx.quadraticCurveTo(points[i][0],points[i][1],midpoint[0],midpoint[1]);}
     ctx.lineTo(points[points.length-1][0],points[points.length-1][1]);
   }
-  private fillOilBody(ctx:CanvasRenderingContext2D,points:Array<[number,number]>,radius:number,character:'loaded'|'dry'|'tap',phase:number){
+  private fillOilBody(ctx:CanvasRenderingContext2D,points:Array<[number,number]>,radius:number,character:'loaded'|'knife'|'dry'|'tap',phase:number){
     if(points.length<2)return;const left:Array<[number,number]>=[],right:Array<[number,number]>=[];
     points.forEach((point,index)=>{const before=points[Math.max(0,index-1)],after=points[Math.min(points.length-1,index+1)],dx=after[0]-before[0],dy=after[1]-before[1],length=Math.max(1,Math.hypot(dx,dy));
-      const t=index/(points.length-1),edge=Math.pow(Math.max(0,Math.sin(Math.PI*t)),character==='tap' ? .25 : .48),base=character==='dry' ? .12 : (character==='tap' ? .30 : .24);
-      const pressure=(base+(1-base)*edge)*(1+.065*Math.sin(t*Math.PI*5+phase)+.035*Math.sin(t*Math.PI*11-phase*.7));
-      const nx=-dy/length*radius*pressure,ny=dx/length*radius*pressure;left.push([point[0]+nx,point[1]+ny]);right.push([point[0]-nx,point[1]-ny]);});
+      const t=index/(points.length-1),entry=character==='knife'?.82:(character==='tap'?.62:.68),loaded=character==='knife'?(t<.82?1:.48+(1-t)*2.85):(t<.16?entry+(t/.16)*.28:t<.76?.96:(.22+(1-t)/.24*.74)),base=character==='dry'?.16:loaded;
+      const texture=(character==='knife'?.025:.045)*Math.sin(t*Math.PI*5+phase)+(character==='knife'?.018:.032)*Math.sin(t*Math.PI*13-phase*.7),leftPressure=base*(1+texture+.035*Math.sin(t*Math.PI*3+phase*.41)),rightPressure=base*(1-texture*.7+.045*Math.cos(t*Math.PI*4-phase*.3));
+      const nx=-dy/length*radius,ny=dx/length*radius;left.push([point[0]+nx*leftPressure,point[1]+ny*leftPressure]);right.push([point[0]-nx*rightPressure,point[1]-ny*rightPressure]);});
     ctx.beginPath();ctx.moveTo(left[0][0],left[0][1]);for(let i=1;i<left.length;i++)ctx.lineTo(left[i][0],left[i][1]);
     for(let i=right.length-1;i>=0;i--)ctx.lineTo(right[i][0],right[i][1]);ctx.closePath();
   }
@@ -259,12 +276,12 @@ export class WatercolorRenderer implements WatercolorControls {
     const quality=this.qualityFactor(),marks=Math.max(2,Math.min(30,Math.round(radius*.48*quality)));
     ctx.globalCompositeOperation='multiply';
     for(let mark=0;mark<marks;mark++){const index=Math.min(points.length-2,Math.floor(random.next()*(points.length-1))),point=points[index],next=points[index+1],angle=Math.atan2(next[1]-point[1],next[0]-point[0]),color=colors[Math.floor(random.next()*colors.length)];
-      ctx.save();ctx.translate(point[0]+(random.next()-.5)*radius,point[1]+(random.next()-.5)*radius);ctx.rotate(angle);ctx.fillStyle=`rgba(${Math.round(color[0]*.62)},${Math.round(color[1]*.62)},${Math.round(color[2]*.62)},${.025*depth*opacity})`;
+      ctx.save();ctx.translate(point[0]+(random.next()-.5)*radius,point[1]+(random.next()-.5)*radius);ctx.rotate(angle);ctx.fillStyle=`rgba(${Math.round(color[0]*.62)},${Math.round(color[1]*.62)},${Math.round(color[2]*.62)},${.050*depth*opacity})`;
       ctx.beginPath();ctx.ellipse(0,0,Math.max(.4,radius*(.04+random.next()*.12)),Math.max(.3,radius*(.025+random.next()*.06)),0,0,Math.PI*2);ctx.fill();ctx.restore();}
     // Small directional specular breaks alternate with matte pits.
     ctx.globalCompositeOperation='screen';
     for(let glint=0;glint<Math.ceil(marks*(.10+this.options.gloss*.55));glint++){const index=Math.min(points.length-2,Math.floor(random.next()*(points.length-1))),point=points[index],next=points[index+1],dx=next[0]-point[0],dy=next[1]-point[1],length=Math.max(1,Math.hypot(dx,dy)),nx=-dy/length,ny=dx/length,color=colors[Math.floor(random.next()*colors.length)],offset=-radius*(.15+random.next()*.45);
-      ctx.strokeStyle=`rgba(${Math.round(color[0]+(255-color[0])*.72)},${Math.round(color[1]+(255-color[1])*.72)},${Math.round(color[2]+(255-color[2])*.72)},${.085*depth*opacity*this.options.gloss})`;ctx.lineWidth=Math.max(.35,radius*.035);
+      ctx.strokeStyle=`rgba(${Math.round(color[0]+(255-color[0])*.72)},${Math.round(color[1]+(255-color[1])*.72)},${Math.round(color[2]+(255-color[2])*.72)},${.16*depth*opacity*this.options.gloss})`;ctx.lineWidth=Math.max(.35,radius*.040);
       ctx.beginPath();ctx.moveTo(point[0]+nx*offset,point[1]+ny*offset);ctx.lineTo(point[0]+nx*offset+dx*.65,point[1]+ny*offset+dy*.65);ctx.stroke();}
   }
   private paintWatercolorStroke(segments:PaintSegment[],strokeId:number,expansion=0,ctx=this.pigmentContext){
@@ -313,20 +330,20 @@ export class WatercolorRenderer implements WatercolorControls {
   private qualityFactor(){return this.options.renderQuality==='fast'?.38:this.options.renderQuality==='balanced'?.68:1;}
   private clearCheckpoints(){this.checkpoints=[];}
   private maybeCheckpoint(){
-    if(!this.plan||this.drawnSegments>=this.plan.segments.length)return;const interval=Math.max(1,Math.ceil(this.plan.segments.length/6)),last=this.checkpoints[this.checkpoints.length-1];if(this.drawnSegments-(last?.segment??0)<interval)return;
-    const surface=document.createElement('canvas');surface.width=this.width;surface.height=this.height;surface.getContext('2d')!.drawImage(this.pigment,0,0);this.checkpoints.push({segment:this.drawnSegments,surface});
+    if(!this.plan||this.drawnSegments>=this.plan.segments.length)return;const interval=Math.max(1,Math.ceil(this.plan.segments.length/4)),last=this.checkpoints[this.checkpoints.length-1];if(this.drawnSegments-(last?.segment??0)<interval)return;
+    const surface=document.createElement('canvas'),oilPigment=document.createElement('canvas');surface.width=oilPigment.width=this.width;surface.height=oilPigment.height=this.height;surface.getContext('2d')!.drawImage(this.pigment,0,0);oilPigment.getContext('2d')!.drawImage(this.oilPigment,0,0);this.checkpoints.push({segment:this.drawnSegments,surface,oilPigment});
   }
   private restoreCheckpoint(target:number){
-    for(let index=this.checkpoints.length-1;index>=0;index--){const checkpoint=this.checkpoints[index];if(checkpoint.segment>target)continue;this.pigmentContext.clearRect(0,0,this.width,this.height);this.pigmentContext.drawImage(checkpoint.surface,0,0);this.drawnSegments=checkpoint.segment;this.wetMarks=[];return true;}return false;
+    for(let index=this.checkpoints.length-1;index>=0;index--){const checkpoint=this.checkpoints[index];if(checkpoint.segment>target)continue;this.pigmentContext.clearRect(0,0,this.width,this.height);this.pigmentContext.drawImage(checkpoint.surface,0,0);this.oilPigmentContext.clearRect(0,0,this.width,this.height);this.oilPigmentContext.drawImage(checkpoint.oilPigment,0,0);this.drawnSegments=checkpoint.segment;this.wetMarks=[];return true;}return false;
   }
-  private resetPainting(){this.pigmentContext.clearRect(0,0,this.width,this.height);this.livePaintContext.clearRect(0,0,this.width,this.height);this.drawnSegments=0;this.wetMarks=[];this.cpuPaintMs=0;this.canvas.dataset.watercolorCpuMs='0';this.canvas.dataset.watercolorActiveStrokes='0';this.canvas.dataset.watercolorStrokeProgress='0.000';this.compose();}
+  private resetPainting(){this.pigmentContext.clearRect(0,0,this.width,this.height);this.oilPigmentContext.clearRect(0,0,this.width,this.height);this.livePaintContext.clearRect(0,0,this.width,this.height);this.drawnSegments=0;this.wetMarks=[];this.cpuPaintMs=0;this.canvas.dataset.watercolorCpuMs='0';this.canvas.dataset.watercolorActiveStrokes='0';this.canvas.dataset.watercolorStrokeProgress='0.000';this.compose();}
   private rebuildToAsync(target:number){
     this.cancelScrub();this.clearCheckpoints();this.resetPainting();this.scrubTarget=target;this.scheduleScrub();
   }
   private resize(){
     const cssWidth=Math.max(1,this.canvas.clientWidth||this.canvas.width),cssHeight=Math.max(1,this.canvas.clientHeight||this.canvas.height),ratio=Math.min(window.devicePixelRatio||1,this.options.pixelRatio);
     const width=Math.min(1400,Math.round(cssWidth*ratio)),height=Math.min(1400,Math.round(cssHeight*ratio));if(width===this.width&&height===this.height)return;
-    this.width=width;this.height=height;this.canvas.width=width;this.canvas.height=height;this.pigment.width=width;this.pigment.height=height;this.livePaint.width=width;this.livePaint.height=height;this.clearCheckpoints();this.createPaper();if(this.plan)this.rebuildToAsync(this.targetSegment(this.progressState.progress));
+    this.width=width;this.height=height;this.canvas.width=width;this.canvas.height=height;this.pigment.width=width;this.pigment.height=height;this.oilPigment.width=width;this.oilPigment.height=height;this.livePaint.width=width;this.livePaint.height=height;this.clearCheckpoints();this.createPaper();if(this.plan)this.rebuildToAsync(this.targetSegment(this.progressState.progress));
   }
   private hex(value:string):[number,number,number]{const normalized=value.replace('#','');const full=normalized.length===3?normalized.split('').map(c=>c+c).join(''):normalized;const n=parseInt(full,16);return[(n>>16)&255,(n>>8)&255,n&255];}
   private canvasAspect(){return Math.max(1,this.canvas.clientWidth||this.canvas.width)/Math.max(1,this.canvas.clientHeight||this.canvas.height);}

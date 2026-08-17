@@ -4,6 +4,8 @@ export declare class WatercolorRenderer implements WatercolorControls {
     private context;
     private pigment;
     private pigmentContext;
+    private oilPigment;
+    private oilPigmentContext;
     private livePaint;
     private livePaintContext;
     private paper;
@@ -53,7 +55,11 @@ export declare class WatercolorRenderer implements WatercolorControls {
     private scheduleScrub;
     private scheduleCompletion;
     private paintOilStroke;
-    private mixProfile;
+    private oilLaneProfiles;
+    private sampleOilPigment;
+    private mixPigments;
+    private averageOilProfiles;
+    private depositOilPigment;
     private averageColors;
     private oilGradient;
     private paintOilTrails;

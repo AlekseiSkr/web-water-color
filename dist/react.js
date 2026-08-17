@@ -1,8 +1,8 @@
-import { jsx as f } from "react/jsx-runtime";
-import { forwardRef as m, useRef as c, useImperativeHandle as d, useEffect as u } from "react";
-import { W as y } from "./WatercolorRenderer-BDwuOIAl.js";
-const R = m(function({ src: t, autoplay: a = !0, className: o, style: l, ...n }, i) {
-  const s = c(null), r = c(null);
+import { jsx as m } from "react/jsx-runtime";
+import { forwardRef as f, useRef as a, useImperativeHandle as d, useEffect as s } from "react";
+import { W as y } from "./WatercolorRenderer-BoKl27Wf.js";
+const R = f(function({ src: t, autoplay: c = !0, className: o, style: l, ...n }, i) {
+  const u = a(null), r = a(null);
   return d(i, () => ({
     play: () => r.current?.play(),
     pause: () => r.current?.pause(),
@@ -11,18 +11,19 @@ const R = m(function({ src: t, autoplay: a = !0, className: o, style: l, ...n },
     setImage: (e) => r.current?.setImage(e) ?? Promise.resolve(),
     setOptions: (e) => r.current?.setOptions(e),
     capture: (e, p) => r.current?.capture(e, p) ?? "",
+    captureHighQuality: (e) => r.current?.captureHighQuality(e) ?? Promise.resolve(null),
     destroy: () => r.current?.destroy()
-  }), []), u(() => {
-    if (!s.current) return;
-    const e = new y(s.current, n);
-    return r.current = e, e.setImage(t).then(() => a && e.play()), () => {
+  }), []), s(() => {
+    if (!u.current) return;
+    const e = new y(u.current, n);
+    return r.current = e, e.setImage(t).then(() => c && e.play()), () => {
       e.destroy(), r.current = null;
     };
-  }, []), u(() => {
+  }, []), s(() => {
     r.current?.setOptions(n);
-  }, [n]), u(() => {
+  }, [n]), s(() => {
     r.current?.setImage(t);
-  }, [t]), /* @__PURE__ */ f("canvas", { ref: s, className: o, style: { display: "block", width: "100%", height: "100%", ...l } });
+  }, [t]), /* @__PURE__ */ m("canvas", { ref: u, className: o, style: { display: "block", width: "100%", height: "100%", ...l } });
 });
 export {
   R as Watercolor

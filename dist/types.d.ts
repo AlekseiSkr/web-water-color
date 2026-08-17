@@ -92,5 +92,6 @@ export interface WatercolorControls {
     setImage(source: ImageSource): Promise<void>;
     setOptions(options: Partial<WatercolorOptions>): void;
     capture(type?: string, quality?: number): string;
+    captureHighQuality(maxDimension?: number): Promise<Blob | null>;
     destroy(): void;
 }

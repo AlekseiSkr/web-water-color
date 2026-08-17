@@ -22,6 +22,7 @@ export const Watercolor = forwardRef<WatercolorControls, WatercolorProps>(functi
     setImage: source => instance.current?.setImage(source) ?? Promise.resolve(),
     setOptions: value => instance.current?.setOptions(value),
     capture: (type, quality) => instance.current?.capture(type, quality) ?? '',
+    captureHighQuality: maxDimension => instance.current?.captureHighQuality(maxDimension) ?? Promise.resolve(null),
     destroy: () => instance.current?.destroy(),
   }), []);
 

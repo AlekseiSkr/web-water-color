@@ -96,6 +96,18 @@ export class WatercolorRenderer implements WatercolorControls {
     if(requiresRebuild){this.createPaper();this.rebuildToAsync(this.targetSegment(this.progressState.progress));}else this.compose();
   }
   capture(type='image/png',quality=.92){return this.canvas.toDataURL(type,quality);}
+  async captureHighQuality(maxDimension=2048){
+    if(!this.source)return null;const longest=Math.max(512,Math.min(4096,Math.round(maxDimension))),aspect=this.width/Math.max(1,this.height);
+    const width=aspect>=1?longest:Math.max(1,Math.round(longest*aspect)),height=aspect>=1?Math.max(1,Math.round(longest/aspect)):longest;
+    const exportCanvas=document.createElement('canvas');exportCanvas.width=width;exportCanvas.height=height;exportCanvas.style.width=`${width}px`;exportCanvas.style.height=`${height}px`;
+    const renderer=new WatercolorRenderer(exportCanvas,{...this.options,onProgress:undefined,onComplete:undefined,onPhaseChange:undefined,seed:this.seed,pixelRatio:1});
+    renderer.resizeObserver.disconnect();renderer.width=width;renderer.height=height;exportCanvas.width=width;exportCanvas.height=height;renderer.pigment.width=width;renderer.pigment.height=height;renderer.livePaint.width=width;renderer.livePaint.height=height;renderer.createPaper();
+    try{
+      await renderer.setImage(this.source);renderer.seek(this.progressState.progress);
+      await new Promise<void>(resolve=>{const wait=()=>{if(!renderer.scrubFrame)resolve();else requestAnimationFrame(wait);};wait();});
+      return await new Promise<Blob|null>(resolve=>exportCanvas.toBlob(resolve,'image/png'));
+    }finally{renderer.destroy();}
+  }
 
   private updatePainting(){
     const target=this.targetSegment(this.progressState.progress);if(target>this.drawnSegments)this.depositBudget(target,true);

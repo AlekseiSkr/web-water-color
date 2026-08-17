@@ -58,6 +58,9 @@ painting.setOptions({ mode: 'oil' });
 // microscopic bristles, blur, pigment samples, gloss, and output resolution.
 painting.setOptions({ renderQuality: 'fast', pixelRatio: 1 });
 
+// Render a separate lossless PNG at export resolution without resizing the visible canvas.
+const fullQualityPng = await painting.captureHighQuality(2048);
+
 // Keep the built-in portrait-aware attention, restore uniform detail, or inject
 // a custom model/mask with one 0–1 weight per analysis pixel.
 painting.setOptions({ detailFocus: 'auto' });

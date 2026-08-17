@@ -37,6 +37,7 @@ export declare class WatercolorRenderer implements WatercolorControls {
     seek(progress: number): void;
     setOptions(options: Partial<WatercolorOptions>): void;
     capture(type?: string, quality?: number): string;
+    captureHighQuality(maxDimension?: number): Promise<Blob | null>;
     private updatePainting;
     private targetSegment;
     private buildTimelineWork;

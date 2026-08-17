@@ -19,6 +19,7 @@ export const Watercolor = defineComponent({
       pause: () => renderer?.pause(),
       restart: (seed?: number) => renderer?.restart(seed),
       seek: (progress: number) => renderer?.seek(progress),
+      captureHighQuality: (maxDimension?: number) => renderer?.captureHighQuality(maxDimension),
     });
     onMounted(async () => {
       renderer = new WatercolorRenderer(canvas.value!, props.options);

@@ -8,7 +8,13 @@ app.innerHTML = `
     <header><span class="eyebrow">WATERCOLOR LAB</span><h1>Paint with light,<br><em>water</em> and time.</h1></header>
     <section class="scroll-scene">
       <div class="painting-layout">
-        <section class="stage"><canvas></canvas><div class="wash-label">wet on wet · layered impasto</div><div class="scroll-progress">Scroll to paint · <span>0%</span></div></section>
+        <section class="stage">
+          <div class="canvas-frame"><canvas></canvas></div>
+          <div class="stage-footer">
+            <div class="stage-caption"><div class="wash-label">wet on wet · layered impasto</div><div class="scroll-progress">Scroll to paint · <span>0%</span></div></div>
+            <button class="preview-artwork">Preview artwork</button>
+          </div>
+        </section>
         <aside>
           <label>Paint medium <select class="mode"><option value="oil" selected>Oil / impasto</option><option value="watercolor">Watercolor</option></select></label>
           <label class="upload">Choose an image<input type="file" accept="image/*"></label>
@@ -55,6 +61,15 @@ app.innerHTML = `
         </aside>
       </div>
     </section>
+    <dialog class="artwork-preview" aria-label="Artwork preview">
+      <div class="preview-shell">
+        <div class="preview-toolbar">
+          <div><strong>Artwork preview</strong><span class="preview-size"></span></div>
+          <div class="preview-actions"><a class="preview-download" download="watercolor-artwork.png">Download PNG</a><button class="preview-close">Close</button></div>
+        </div>
+        <div class="preview-image-wrap"><img class="preview-image" alt="Full-resolution preview of the drawn artwork"></div>
+      </div>
+    </dialog>
   </main>`;
 
 const canvas = app.querySelector('canvas')!;
@@ -66,6 +81,12 @@ const repaintButton = app.querySelector<HTMLButtonElement>('.repaint')!;
 const scrollButton = app.querySelector<HTMLButtonElement>('.scroll-draw')!;
 const scrollProgress = app.querySelector<HTMLElement>('.scroll-progress span')!;
 const controls = app.querySelector<HTMLElement>('aside')!;
+const previewButton = app.querySelector<HTMLButtonElement>('.preview-artwork')!;
+const previewDialog = app.querySelector<HTMLDialogElement>('.artwork-preview')!;
+const previewImage = app.querySelector<HTMLImageElement>('.preview-image')!;
+const previewDownload = app.querySelector<HTMLAnchorElement>('.preview-download')!;
+const previewSize = app.querySelector<HTMLElement>('.preview-size')!;
+let previewObjectUrl: string | undefined;
 let scrollMode = false;
 let scrollUpdate = 0;
 let scrollValue = 0;
@@ -146,6 +167,29 @@ app.querySelector<HTMLInputElement>('input[type=file]')!.onchange = event => {
   }
 };
 window.addEventListener('beforeunload', () => { if (uploadedObjectUrl) URL.revokeObjectURL(uploadedObjectUrl); });
+previewButton.onclick = async () => {
+  previewButton.disabled = true;
+  previewButton.textContent = 'Rendering full quality…';
+  try {
+    const blob = await watercolor.captureHighQuality(2048);
+    if (!blob) return;
+    if (previewObjectUrl) URL.revokeObjectURL(previewObjectUrl);
+    previewObjectUrl = URL.createObjectURL(blob);
+    previewImage.src = previewObjectUrl;
+    await previewImage.decode();
+    previewDownload.href = previewObjectUrl;
+    previewSize.textContent = `${previewImage.naturalWidth} × ${previewImage.naturalHeight} · lossless PNG`;
+    previewDialog.showModal();
+  } catch (error) {
+    console.error('Unable to render the full-quality preview.', error);
+  } finally {
+    previewButton.disabled = false;
+    previewButton.textContent = 'Preview artwork';
+  }
+};
+app.querySelector<HTMLButtonElement>('.preview-close')!.onclick = () => previewDialog.close();
+previewDialog.onclick = event => { if (event.target === previewDialog) previewDialog.close(); };
+window.addEventListener('beforeunload', () => { if (previewObjectUrl) URL.revokeObjectURL(previewObjectUrl); });
 repaintButton.onclick = () => {
   window.clearTimeout(plannerTimer);
   timeline.value = '0';

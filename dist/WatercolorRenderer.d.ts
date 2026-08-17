@@ -28,6 +28,7 @@ export declare class WatercolorRenderer implements WatercolorControls {
     private checkpoints;
     private cpuPaintMs;
     private timelineWork;
+    private imageRequest;
     constructor(canvas: HTMLCanvasElement, options?: WatercolorOptions);
     setImage(source: ImageSource): Promise<void>;
     play(): void;

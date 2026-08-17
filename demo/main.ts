@@ -69,7 +69,14 @@ const controls = app.querySelector<HTMLElement>('aside')!;
 let scrollMode = false;
 let scrollUpdate = 0;
 let scrollValue = 0;
-const watercolor = new WatercolorRenderer(canvas, { mode: 'oil', duration: 14, onProgress: p => timeline.value = String(p) });
+const watercolor = new WatercolorRenderer(canvas, {
+  mode: 'oil',
+  duration: 14,
+  onProgress: progress => timeline.value = String(progress),
+  onPhaseChange: phase => {
+    if (phase === 'painting' && repaintButton.classList.contains('is-loading')) clearRepaintPrompt();
+  },
+});
 
 function protectMobileRangeTrack(input:HTMLInputElement){
   let pointer=-1,startX=0,startY=0,startValue=0,gesture:'pending'|'drag'|'scroll'='pending';
@@ -118,8 +125,8 @@ function setScrollMode(enabled:boolean){
   if(enabled){watercolor.pause();requestAnimationFrame(()=>{const sceneTop=scrollScene.getBoundingClientRect().top+window.scrollY;window.scrollTo({top:sceneTop,behavior:'smooth'});requestScrollPainting();});}
   else {timeline.value=String(scrollValue);scrollProgress.textContent=`${Math.round(scrollValue*100)}%`;watercolor.play();}
 }
-function clearRepaintPrompt(){repaintButton.classList.remove('settings-changed');repaintButton.textContent='Paint another variation';}
-function promptRepaint(){repaintButton.classList.remove('settings-changed');void repaintButton.offsetWidth;repaintButton.classList.add('settings-changed');repaintButton.textContent='Settings changed · paint again';}
+function clearRepaintPrompt(){repaintButton.classList.remove('settings-changed','is-loading');repaintButton.textContent='Paint another variation';}
+function promptRepaint(){repaintButton.classList.remove('settings-changed','is-loading');void repaintButton.offsetWidth;repaintButton.classList.add('settings-changed');repaintButton.textContent='Settings changed · paint again';}
 async function setSource(source: string) { clearRepaintPrompt();await watercolor.setImage(source); if(scrollMode)requestScrollPainting();else watercolor.play(); }
 setSource(demoSample).catch(() => {});
 app.querySelector<HTMLInputElement>('input[type=file]')!.onchange = event => {
@@ -129,7 +136,16 @@ app.querySelector<HTMLInputElement>('input[type=file]')!.onchange = event => {
     setSource(objectUrl).finally(() => URL.revokeObjectURL(objectUrl));
   }
 };
-repaintButton.onclick = () => {clearRepaintPrompt();watercolor.restart();};
+repaintButton.onclick = () => {
+  window.clearTimeout(plannerTimer);
+  const pending = {...pendingPlannerOptions};
+  for (const key of Object.keys(pendingPlannerOptions)) delete pendingPlannerOptions[key as keyof WatercolorOptions];
+  repaintButton.classList.remove('settings-changed');
+  repaintButton.classList.add('is-loading');
+  repaintButton.textContent = 'Replanning new variation…';
+  if (Object.keys(pending).length) watercolor.setOptions({...pending, seed: Math.random() * 10_000});
+  else watercolor.restart();
+};
 scrollButton.onclick=()=>setScrollMode(!scrollMode);
 window.addEventListener('scroll',requestScrollPainting,{passive:true});
 window.addEventListener('resize',requestScrollPainting);

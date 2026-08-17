@@ -15,6 +15,7 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build && tsc --emitDeclarationOnly",
+    "build:pages": "vite build --config vite.pages.config.ts",
     "typecheck": "tsc --noEmit",
     "test": "vitest run"
   },

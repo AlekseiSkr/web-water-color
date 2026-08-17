@@ -2,6 +2,8 @@
 
 A stroke-based watercolor and oil-painting timelapse renderer for image inputs. It analyzes the source into thousands of ordered brush paths, then reconstructs it on a blank surface. The source bitmap is never displayed by the renderer.
 
+**[Try the interactive demo](https://alekseiskr.github.io/web-water-color/)** — choose any local image, switch between oil and watercolor, scrub or scroll through the painting, and tune the brush model. Images are processed locally in the browser and are never uploaded by the demo.
+
 Oil mode renders spline-smoothed paths as layered impasto with changing pressure and loaded, dry, or tap stroke characters. Each new stroke samples wet paint at five positions below it, mixes pigments subtractively along its length, casts a shallow thickness shadow, carries raised matte bristle texture and directional gloss, and occasionally drags paint beyond a loaded edge.
 
 The painting develops through broad washes, medium color masses, form strokes, fine color brushes, and contour details. An automatic semantic attention map spends the final detail budget on perceptually important portrait features such as eyes and mouth while leaving hair interiors and background broadly painted. Watercolor marks have bristle tracks, wet boundaries, pooled edges, mottled pigment density, paper-fiber pinholes, paper-height deflection, delayed expansion, and granulating particles. A seed changes both path planning and pigment behavior.

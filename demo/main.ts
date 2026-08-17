@@ -12,6 +12,7 @@ app.innerHTML = `
         <aside>
           <label>Paint medium <select class="mode"><option value="oil" selected>Oil / impasto</option><option value="watercolor">Watercolor</option></select></label>
           <label class="upload">Choose an image<input type="file" accept="image/*"></label>
+          <small class="privacy">Your image stays in this browser. Nothing is uploaded or stored.</small>
           <button class="repaint">Paint another variation</button>
           <button class="pause">Pause</button>
           <button class="scroll-draw" aria-pressed="false">Draw from page scroll</button>
@@ -69,6 +70,30 @@ let scrollUpdate = 0;
 let scrollValue = 0;
 const watercolor = new WatercolorRenderer(canvas, { mode: 'oil', duration: 14, onProgress: p => timeline.value = String(p) });
 
+const demoSample = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(`
+  <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="900" viewBox="0 0 1200 900">
+    <defs>
+      <linearGradient id="wall" x2="0" y2="1"><stop stop-color="#d8cbb4"/><stop offset="1" stop-color="#a9977c"/></linearGradient>
+      <radialGradient id="bowl"><stop stop-color="#e5ad58"/><stop offset=".7" stop-color="#a95734"/><stop offset="1" stop-color="#613429"/></radialGradient>
+    </defs>
+    <rect width="1200" height="900" fill="url(#wall)"/>
+    <rect y="610" width="1200" height="290" fill="#725a43"/>
+    <path d="M0 646 Q300 594 620 640 T1200 625 V900 H0Z" fill="#8d7357"/>
+    <ellipse cx="608" cy="700" rx="340" ry="70" fill="#493b32" opacity=".35"/>
+    <path d="M405 556 Q600 488 797 556 L750 716 Q600 780 453 716Z" fill="url(#bowl)"/>
+    <path d="M405 556 Q600 485 797 556 Q600 636 405 556Z" fill="#452f2a"/>
+    <circle cx="510" cy="516" r="92" fill="#b7442d"/><circle cx="632" cy="500" r="104" fill="#d08c35"/>
+    <circle cx="714" cy="529" r="82" fill="#7c9b48"/><circle cx="575" cy="555" r="76" fill="#d4b442"/>
+    <path d="M620 405 Q672 330 730 350 Q690 418 620 448Z" fill="#395d3b"/>
+    <path d="M612 414 Q570 344 516 361 Q549 423 614 449Z" fill="#547342"/>
+    <path d="M287 213 C346 170 413 190 438 252 L407 523 C370 549 317 545 282 515Z" fill="#284f5a"/>
+    <path d="M306 244 Q360 216 414 250 L397 488 Q350 518 300 486Z" fill="#447a7f"/>
+    <ellipse cx="360" cy="217" rx="77" ry="31" fill="#1d3d46"/>
+    <path d="M798 254 Q878 198 957 259 L923 568 Q871 600 814 563Z" fill="#aa6743"/>
+    <ellipse cx="877" cy="254" rx="80" ry="28" fill="#68412f"/>
+    <path d="M823 287 Q873 258 932 287 L912 534 Q868 563 832 535Z" fill="#c37c4e"/>
+  </svg>`)}`;
+
 function scrollPainting(){
   scrollUpdate=0;if(!scrollMode)return;const sceneTop=scrollScene.getBoundingClientRect().top+window.scrollY,travel=Math.max(1,scrollScene.offsetHeight-paintingLayout.offsetHeight);
   const progress=Math.max(0,Math.min(1,(window.scrollY-sceneTop)/travel));scrollValue=progress;watercolor.seek(progress);timeline.value=String(progress);scrollProgress.textContent=`${Math.round(progress*100)}%`;
@@ -81,10 +106,13 @@ function setScrollMode(enabled:boolean){
   else {timeline.value=String(scrollValue);scrollProgress.textContent=`${Math.round(scrollValue*100)}%`;}
 }
 async function setSource(source: string) { await watercolor.setImage(source); if(scrollMode)requestScrollPainting();else watercolor.play(); }
-setSource('/reference.png').catch(() => {});
+setSource(demoSample).catch(() => {});
 app.querySelector<HTMLInputElement>('input[type=file]')!.onchange = event => {
   const file = (event.target as HTMLInputElement).files?.[0];
-  if (file) setSource(URL.createObjectURL(file));
+  if (file) {
+    const objectUrl = URL.createObjectURL(file);
+    setSource(objectUrl).finally(() => URL.revokeObjectURL(objectUrl));
+  }
 };
 app.querySelector<HTMLButtonElement>('.repaint')!.onclick = () => watercolor.restart();
 pauseButton.onclick = event => {

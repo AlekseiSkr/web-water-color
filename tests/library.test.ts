@@ -11,5 +11,6 @@ describe('library surface', () => {
     expect(WatercolorRenderer.prototype.restart).toBeTypeOf('function');
     expect(WatercolorRenderer.prototype.seek).toBeTypeOf('function');
     expect(WatercolorRenderer.prototype.captureHighQuality).toBeTypeOf('function');
+    expect(WatercolorRenderer.prototype.captureHighQualityLayers).toBeTypeOf('function');
   });
 });

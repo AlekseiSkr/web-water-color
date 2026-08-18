@@ -61,6 +61,11 @@ painting.setOptions({ renderQuality: 'fast', pixelRatio: 1 });
 // Render a separate lossless PNG at export resolution without resizing the visible canvas.
 const fullQualityPng = await painting.captureHighQuality(2048);
 
+// Render the paper composition and a true-alpha pigment-only PNG in one pass.
+// The interactive demo can crop either layer before downloading it.
+const layers = await painting.captureHighQualityLayers(2048);
+const transparentPng = layers?.transparent;
+
 // Keep the built-in portrait-aware attention, restore uniform detail, or inject
 // a custom model/mask with one 0–1 weight per analysis pixel.
 painting.setOptions({ detailFocus: 'auto' });

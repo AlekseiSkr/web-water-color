@@ -40,6 +40,12 @@ export declare class WatercolorRenderer implements WatercolorControls {
     setOptions(options: Partial<WatercolorOptions>): void;
     capture(type?: string, quality?: number): string;
     captureHighQuality(maxDimension?: number): Promise<Blob | null>;
+    captureHighQualityLayers(maxDimension?: number): Promise<{
+        withPaper: Blob;
+        transparent: Blob;
+        width: number;
+        height: number;
+    } | null>;
     private updatePainting;
     private targetSegment;
     private buildTimelineWork;

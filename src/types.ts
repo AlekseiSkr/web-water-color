@@ -97,5 +97,15 @@ export interface WatercolorControls {
   setOptions(options: Partial<WatercolorOptions>): void;
   capture(type?: string, quality?: number): string;
   captureHighQuality(maxDimension?: number): Promise<Blob | null>;
+  captureHighQualityLayers(maxDimension?: number): Promise<HighQualityCapture | null>;
   destroy(): void;
+}
+
+export interface HighQualityCapture {
+  /** Final painting composited over the selected paper. */
+  withPaper: Blob;
+  /** Deposited pigment only, preserving true PNG transparency outside the marks. */
+  transparent: Blob;
+  width: number;
+  height: number;
 }

@@ -106,6 +106,9 @@ export class WatercolorRenderer implements WatercolorControls {
   }
   capture(type='image/png',quality=.92){return this.canvas.toDataURL(type,quality);}
   async captureHighQuality(maxDimension=2048){
+    return (await this.captureHighQualityLayers(maxDimension))?.withPaper??null;
+  }
+  async captureHighQualityLayers(maxDimension=2048){
     if(!this.source)return null;const longest=Math.max(512,Math.min(4096,Math.round(maxDimension))),aspect=this.width/Math.max(1,this.height);
     const width=aspect>=1?longest:Math.max(1,Math.round(longest*aspect)),height=aspect>=1?Math.max(1,Math.round(longest/aspect)):longest;
     const exportCanvas=document.createElement('canvas');exportCanvas.width=width;exportCanvas.height=height;exportCanvas.style.width=`${width}px`;exportCanvas.style.height=`${height}px`;
@@ -114,7 +117,9 @@ export class WatercolorRenderer implements WatercolorControls {
     try{
       await renderer.setImage(this.source);renderer.seek(this.progressState.progress);
       await new Promise<void>(resolve=>{const wait=()=>{if(!renderer.scrubFrame)resolve();else requestAnimationFrame(wait);};wait();});
-      return await new Promise<Blob|null>(resolve=>exportCanvas.toBlob(resolve,'image/png'));
+      const transparentCanvas=document.createElement('canvas');transparentCanvas.width=width;transparentCanvas.height=height;const transparentContext=transparentCanvas.getContext('2d')!;transparentContext.drawImage(renderer.pigment,0,0);transparentContext.drawImage(renderer.livePaint,0,0);
+      const toBlob=(canvas:HTMLCanvasElement)=>new Promise<Blob>((resolve,reject)=>canvas.toBlob(blob=>blob?resolve(blob):reject(new Error('Unable to encode PNG.')),'image/png'));
+      const [withPaper,transparent]=await Promise.all([toBlob(exportCanvas),toBlob(transparentCanvas)]);return{withPaper,transparent,width,height};
     }finally{renderer.destroy();}
   }
 

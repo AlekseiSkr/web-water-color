@@ -1,5 +1,6 @@
 import { WatercolorRenderer } from '../src';
 import type { WatercolorOptions } from '../src';
+import { cropSourceRect, type CropRect } from './crop';
 import './style.css';
 
 const app = document.querySelector<HTMLDivElement>('#app')!;
@@ -65,9 +66,16 @@ app.innerHTML = `
       <div class="preview-shell">
         <div class="preview-toolbar">
           <div><strong>Artwork preview</strong><span class="preview-size"></span></div>
-          <div class="preview-actions"><a class="preview-download" download="watercolor-artwork.png">Download PNG</a><button class="preview-close">Close</button></div>
+          <div class="preview-actions"><button class="crop-reset">Reset crop</button><button class="preview-download-paper">Download crop</button><button class="preview-download-transparent">Download without paper</button><button class="preview-close">Close</button></div>
         </div>
-        <div class="preview-image-wrap"><img class="preview-image" alt="Full-resolution preview of the drawn artwork"></div>
+        <div class="preview-image-wrap">
+          <div class="preview-crop-stage">
+            <img class="preview-image" alt="Full-resolution preview of the drawn artwork">
+            <div class="crop-selection" role="region" tabindex="0" aria-label="Crop selection. Drag to move; drag a corner to resize. Arrow keys move; minus and plus resize.">
+              <i data-handle="nw"></i><i data-handle="ne"></i><i data-handle="se"></i><i data-handle="sw"></i>
+            </div>
+          </div>
+        </div>
       </div>
     </dialog>
   </main>`;
@@ -84,9 +92,16 @@ const controls = app.querySelector<HTMLElement>('aside')!;
 const previewButton = app.querySelector<HTMLButtonElement>('.preview-artwork')!;
 const previewDialog = app.querySelector<HTMLDialogElement>('.artwork-preview')!;
 const previewImage = app.querySelector<HTMLImageElement>('.preview-image')!;
-const previewDownload = app.querySelector<HTMLAnchorElement>('.preview-download')!;
+const previewStage = app.querySelector<HTMLElement>('.preview-crop-stage')!;
+const previewWrap = app.querySelector<HTMLElement>('.preview-image-wrap')!;
+const cropSelection = app.querySelector<HTMLElement>('.crop-selection')!;
+const previewDownloadPaper = app.querySelector<HTMLButtonElement>('.preview-download-paper')!;
+const previewDownloadTransparent = app.querySelector<HTMLButtonElement>('.preview-download-transparent')!;
 const previewSize = app.querySelector<HTMLElement>('.preview-size')!;
-let previewObjectUrl: string | undefined;
+let previewPaperUrl: string | undefined;
+let previewTransparentUrl: string | undefined;
+let previewTransparentImage: HTMLImageElement | undefined;
+let previewCrop:CropRect={x:0,y:0,width:1,height:1};
 let scrollMode = false;
 let scrollUpdate = 0;
 let scrollValue = 0;
@@ -167,19 +182,56 @@ app.querySelector<HTMLInputElement>('input[type=file]')!.onchange = event => {
   }
 };
 window.addEventListener('beforeunload', () => { if (uploadedObjectUrl) URL.revokeObjectURL(uploadedObjectUrl); });
+const clampCrop=(value:number,min=0,max=1)=>Math.max(min,Math.min(max,value));
+function cropPixels(){return cropSourceRect(previewCrop,previewImage.naturalWidth,previewImage.naturalHeight);}
+function updateCropSelection(){
+  cropSelection.style.left=`${previewCrop.x*100}%`;cropSelection.style.top=`${previewCrop.y*100}%`;cropSelection.style.width=`${previewCrop.width*100}%`;cropSelection.style.height=`${previewCrop.height*100}%`;
+  const size=cropPixels();previewSize.textContent=`Crop ${size.width} × ${size.height} · source ${previewImage.naturalWidth} × ${previewImage.naturalHeight}`;
+}
+function layoutPreviewStage(){
+  if(!previewImage.naturalWidth)return;const availableWidth=Math.max(1,previewWrap.clientWidth-40),availableHeight=Math.max(1,previewWrap.clientHeight-40),scale=Math.min(availableWidth/previewImage.naturalWidth,availableHeight/previewImage.naturalHeight);
+  previewStage.style.width=`${Math.max(1,previewImage.naturalWidth*scale)}px`;previewStage.style.height=`${Math.max(1,previewImage.naturalHeight*scale)}px`;updateCropSelection();
+}
+new ResizeObserver(layoutPreviewStage).observe(previewWrap);
+app.querySelector<HTMLButtonElement>('.crop-reset')!.onclick=()=>{previewCrop={x:0,y:0,width:1,height:1};updateCropSelection();};
+let cropPointer=-1,cropMode='move',cropStartX=0,cropStartY=0,cropStart:CropRect={...previewCrop};
+cropSelection.addEventListener('pointerdown',event=>{
+  cropPointer=event.pointerId;cropMode=(event.target as HTMLElement).dataset.handle??'move';cropStartX=event.clientX;cropStartY=event.clientY;cropStart={...previewCrop};cropSelection.setPointerCapture(event.pointerId);event.preventDefault();
+});
+cropSelection.addEventListener('pointermove',event=>{
+  if(event.pointerId!==cropPointer)return;const rect=previewStage.getBoundingClientRect(),dx=(event.clientX-cropStartX)/Math.max(1,rect.width),dy=(event.clientY-cropStartY)/Math.max(1,rect.height),minWidth=Math.min(.5,32/Math.max(1,rect.width)),minHeight=Math.min(.5,32/Math.max(1,rect.height));
+  if(cropMode==='move'){previewCrop.x=clampCrop(cropStart.x+dx,0,1-cropStart.width);previewCrop.y=clampCrop(cropStart.y+dy,0,1-cropStart.height);}
+  else {const right=cropStart.x+cropStart.width,bottom=cropStart.y+cropStart.height;if(cropMode.includes('w')){previewCrop.x=clampCrop(cropStart.x+dx,0,right-minWidth);previewCrop.width=right-previewCrop.x;}if(cropMode.includes('e'))previewCrop.width=clampCrop(cropStart.width+dx,minWidth,1-cropStart.x);if(cropMode.includes('n')){previewCrop.y=clampCrop(cropStart.y+dy,0,bottom-minHeight);previewCrop.height=bottom-previewCrop.y;}if(cropMode.includes('s'))previewCrop.height=clampCrop(cropStart.height+dy,minHeight,1-cropStart.y);}
+  updateCropSelection();event.preventDefault();
+});
+cropSelection.addEventListener('pointerup',event=>{if(event.pointerId===cropPointer)cropPointer=-1;});
+cropSelection.addEventListener('pointercancel',()=>cropPointer=-1);
+cropSelection.addEventListener('keydown',event=>{
+  const step=event.shiftKey?.025:.01;if(event.key==='ArrowLeft')previewCrop.x=clampCrop(previewCrop.x-step,0,1-previewCrop.width);else if(event.key==='ArrowRight')previewCrop.x=clampCrop(previewCrop.x+step,0,1-previewCrop.width);else if(event.key==='ArrowUp')previewCrop.y=clampCrop(previewCrop.y-step,0,1-previewCrop.height);else if(event.key==='ArrowDown')previewCrop.y=clampCrop(previewCrop.y+step,0,1-previewCrop.height);else if(event.key==='-'||event.key==='_'){previewCrop.width=Math.max(.05,previewCrop.width-step*2);previewCrop.height=Math.max(.05,previewCrop.height-step*2);previewCrop.x=clampCrop(previewCrop.x+step,0,1-previewCrop.width);previewCrop.y=clampCrop(previewCrop.y+step,0,1-previewCrop.height);}else if(event.key==='+'||event.key==='='){const right=previewCrop.x+previewCrop.width,bottom=previewCrop.y+previewCrop.height;previewCrop.x=Math.max(0,previewCrop.x-step);previewCrop.y=Math.max(0,previewCrop.y-step);previewCrop.width=Math.min(1-previewCrop.x,right-previewCrop.x+step);previewCrop.height=Math.min(1-previewCrop.y,bottom-previewCrop.y+step);}else return;updateCropSelection();event.preventDefault();
+});
+async function croppedPng(image:HTMLImageElement){
+  const source=cropSourceRect(previewCrop,image.naturalWidth,image.naturalHeight),output=document.createElement('canvas');output.width=source.width;output.height=source.height;
+  output.getContext('2d')!.drawImage(image,source.x,source.y,source.width,source.height,0,0,source.width,source.height);return await new Promise<Blob>((resolve,reject)=>output.toBlob(blob=>blob?resolve(blob):reject(new Error('Unable to encode cropped PNG.')),'image/png'));
+}
+async function downloadCrop(transparent:boolean){
+  const source=transparent?previewTransparentImage:previewImage;if(!source)return;const button=transparent?previewDownloadTransparent:previewDownloadPaper,original=button.textContent;button.disabled=true;button.textContent='Preparing…';
+  try{const blob=await croppedPng(source),url=URL.createObjectURL(blob),link=document.createElement('a'),size=cropPixels();link.href=url;link.download=transparent?'watercolor-artwork-cropped-transparent.png':'watercolor-artwork-cropped.png';link.click();window.setTimeout(()=>URL.revokeObjectURL(url),1000);previewSize.textContent=`Downloaded ${size.width} × ${size.height} ${transparent?'transparent':'paper'} PNG`;}
+  catch(error){console.error('Unable to export the crop.',error);previewSize.textContent='Unable to export crop';}
+  finally{button.disabled=false;button.textContent=original;}
+}
+previewDownloadPaper.onclick=()=>void downloadCrop(false);
+previewDownloadTransparent.onclick=()=>void downloadCrop(true);
 previewButton.onclick = async () => {
   previewButton.disabled = true;
   previewButton.textContent = 'Rendering full quality…';
   try {
-    const blob = await watercolor.captureHighQuality(2048);
-    if (!blob) return;
-    if (previewObjectUrl) URL.revokeObjectURL(previewObjectUrl);
-    previewObjectUrl = URL.createObjectURL(blob);
-    previewImage.src = previewObjectUrl;
-    await previewImage.decode();
-    previewDownload.href = previewObjectUrl;
-    previewSize.textContent = `${previewImage.naturalWidth} × ${previewImage.naturalHeight} · lossless PNG`;
+    const capture = await watercolor.captureHighQualityLayers(2048);
+    if (!capture) return;
+    if (previewPaperUrl) URL.revokeObjectURL(previewPaperUrl);if(previewTransparentUrl) URL.revokeObjectURL(previewTransparentUrl);
+    previewPaperUrl=URL.createObjectURL(capture.withPaper);previewTransparentUrl=URL.createObjectURL(capture.transparent);previewTransparentImage=new Image();previewImage.src=previewPaperUrl;previewTransparentImage.src=previewTransparentUrl;
+    await Promise.all([previewImage.decode(),previewTransparentImage.decode()]);previewCrop={x:0,y:0,width:1,height:1};
     previewDialog.showModal();
+    requestAnimationFrame(layoutPreviewStage);
   } catch (error) {
     console.error('Unable to render the full-quality preview.', error);
   } finally {
@@ -189,7 +241,7 @@ previewButton.onclick = async () => {
 };
 app.querySelector<HTMLButtonElement>('.preview-close')!.onclick = () => previewDialog.close();
 previewDialog.onclick = event => { if (event.target === previewDialog) previewDialog.close(); };
-window.addEventListener('beforeunload', () => { if (previewObjectUrl) URL.revokeObjectURL(previewObjectUrl); });
+window.addEventListener('beforeunload', () => { if (previewPaperUrl) URL.revokeObjectURL(previewPaperUrl);if(previewTransparentUrl) URL.revokeObjectURL(previewTransparentUrl); });
 repaintButton.onclick = () => {
   window.clearTimeout(plannerTimer);
   timeline.value = '0';

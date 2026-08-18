@@ -1,21 +1,21 @@
-import Oi from "gsap";
+import ni from "gsap";
 const qi = (Y, i = 0, o = 1) => Math.max(i, Math.min(o, Y));
-function ni(Y, i) {
+function Oi(Y, i) {
   const o = Y[i], K = Y[i + 1], U = Y[i + 2], h = Math.max(o, K, U), a = Math.min(o, K, U), R = 128 - 0.168736 * o - 0.331264 * K + 0.5 * U, E = 128 + 0.5 * o - 0.418688 * K - 0.081312 * U;
   return o < 48 || h - a < 12 || E < 128 || E > 181 || R < 72 || R > 137 ? 0 : qi((o - K + 18) / 70) * qi((E - 128) / 24) * qi((137 - R) / 28);
 }
 function Ei(Y, i, o, K, U, h, a, R) {
   const E = Math.max(0, Math.floor(K - h * 2.5)), l = Math.min(i - 1, Math.ceil(K + h * 2.5)), S = Math.max(0, Math.floor(U - a * 2.5)), F = Math.min(o - 1, Math.ceil(U + a * 2.5));
   for (let p = S; p <= F; p++) for (let N = E; N <= l; N++) {
-    const I = (N - K) / h, M = (p - U) / a, w = R * Math.exp(-(I * I + M * M) * 0.5), x = p * i + N;
-    Y[x] = Math.max(Y[x], w);
+    const x = (N - K) / h, M = (p - U) / a, w = R * Math.exp(-(x * x + M * M) * 0.5), I = p * i + N;
+    Y[I] = Math.max(Y[I], w);
   }
 }
 function fi(Y, i, o) {
   const K = Math.max(2, Math.round(Math.min(i, o) / 150)), U = Math.ceil(i / K), h = Math.ceil(o / K), a = new Uint8Array(U * h), R = new Uint8Array(U * h);
   for (let m = 0; m < h; m++) for (let L = 0; L < U; L++) {
     const W = Math.min(i - 1, Math.round((L + 0.5) * K)), C = Math.min(o - 1, Math.round((m + 0.5) * K));
-    a[m * U + L] = ni(Y, (C * i + W) * 4) > 0.17 ? 1 : 0;
+    a[m * U + L] = Oi(Y, (C * i + W) * 4) > 0.17 ? 1 : 0;
   }
   let E = [];
   for (let m = 0; m < a.length; m++) {
@@ -35,47 +35,47 @@ function fi(Y, i, o) {
     const L = m % U, W = Math.floor(m / U);
     l = Math.min(l, L), F = Math.max(F, L), S = Math.min(S, W), p = Math.max(p, W);
   }
-  let N = l * K, I = Math.min(i, (F + 1) * K), M = S * K, w = Math.min(o, (p + 1) * K), x = I - N, G = w - M;
-  if (G > x * 1.48 && (w = Math.min(w, M + x * 1.48)), G = w - M, !(x < i * 0.12 || G < o * 0.12))
-    return N = Math.max(0, N - x * 0.13), I = Math.min(i, I + x * 0.13), M = Math.max(0, M - G * 0.18), w = Math.min(o, w + G * 0.08), { left: N, right: I, top: M, bottom: w, width: I - N, height: w - M };
+  let N = l * K, x = Math.min(i, (F + 1) * K), M = S * K, w = Math.min(o, (p + 1) * K), I = x - N, G = w - M;
+  if (G > I * 1.48 && (w = Math.min(w, M + I * 1.48)), G = w - M, !(I < i * 0.12 || G < o * 0.12))
+    return N = Math.max(0, N - I * 0.13), x = Math.min(i, x + I * 0.13), M = Math.max(0, M - G * 0.18), w = Math.min(o, w + G * 0.08), { left: N, right: x, top: M, bottom: w, width: x - N, height: w - M };
 }
 function gi(Y, i, o, K, U, h, a, R, E) {
   const l = [], S = Math.max(2, Math.round((U - K) * 0.055));
-  for (let N = Math.max(S, Math.round(h)); N < Math.min(o - S, Math.round(a)); N += 2) for (let I = Math.max(S, Math.round(K)); I < Math.min(i - S, Math.round(U)); I += 2) {
-    const M = (N * i + I) * 4, w = Y[M] * 0.2126 + Y[M + 1] * 0.7152 + Y[M + 2] * 0.0722;
-    let x = 0, G = 0;
+  for (let N = Math.max(S, Math.round(h)); N < Math.min(o - S, Math.round(a)); N += 2) for (let x = Math.max(S, Math.round(K)); x < Math.min(i - S, Math.round(U)); x += 2) {
+    const M = (N * i + x) * 4, w = Y[M] * 0.2126 + Y[M + 1] * 0.7152 + Y[M + 2] * 0.0722;
+    let I = 0, G = 0;
     for (const [L, W] of [[-S, 0], [S, 0], [0, -S], [0, S]]) {
-      const C = ((N + W) * i + I + L) * 4;
-      x += Y[C] * 0.2126 + Y[C + 1] * 0.7152 + Y[C + 2] * 0.0722, G++;
+      const C = ((N + W) * i + x + L) * 4;
+      I += Y[C] * 0.2126 + Y[C + 1] * 0.7152 + Y[C + 2] * 0.0722, G++;
     }
-    const m = x / G - w;
-    m > 5 && l.push({ x: I, y: N, score: m });
+    const m = I / G - w;
+    m > 5 && l.push({ x, y: N, score: m });
   }
-  l.sort((N, I) => I.score - N.score);
+  l.sort((N, x) => x.score - N.score);
   const F = l.slice(0, Math.max(4, Math.ceil(l.length * 0.04)));
   if (!F.length) return { x: R, y: E };
-  const p = F.reduce((N, I) => N + I.score, 0);
-  return { x: F.reduce((N, I) => N + I.x * I.score, 0) / p, y: F.reduce((N, I) => N + I.y * I.score, 0) / p };
+  const p = F.reduce((N, x) => N + x.score, 0);
+  return { x: F.reduce((N, x) => N + x.x * x.score, 0) / p, y: F.reduce((N, x) => N + x.y * x.score, 0) / p };
 }
 function di(Y, i, o, K = "auto") {
   const U = new Float32Array(i * o);
   if (K === "uniform")
     return U.fill(1), U;
   const h = new Float32Array(i * o);
-  for (let x = 0; x < h.length; x++) {
-    const G = x * 4;
-    h[x] = Y[G] * 0.2126 + Y[G + 1] * 0.7152 + Y[G + 2] * 0.0722;
+  for (let I = 0; I < h.length; I++) {
+    const G = I * 4;
+    h[I] = Y[G] * 0.2126 + Y[G + 1] * 0.7152 + Y[G + 2] * 0.0722;
   }
-  for (let x = 1; x < o - 1; x++) for (let G = 1; G < i - 1; G++) {
-    const m = x * i + G, L = m * 4, W = Math.hypot(h[m + 1] - h[m - 1], h[m + i] - h[m - i]) / 255, C = (Math.max(Y[L], Y[L + 1], Y[L + 2]) - Math.min(Y[L], Y[L + 1], Y[L + 2])) / 255;
+  for (let I = 1; I < o - 1; I++) for (let G = 1; G < i - 1; G++) {
+    const m = I * i + G, L = m * 4, W = Math.hypot(h[m + 1] - h[m - 1], h[m + i] - h[m - i]) / 255, C = (Math.max(Y[L], Y[L + 1], Y[L + 2]) - Math.min(Y[L], Y[L + 1], Y[L + 2])) / 255;
     U[m] = qi(0.08 + W * 1.45 + C * 0.1, 0, 0.48);
   }
   const a = fi(Y, i, o);
   if (!a) return U;
   const { left: R, right: E, top: l, bottom: S } = a, F = a.width, p = a.height, N = (R + E) * 0.5;
   Ei(U, i, o, N, l + p * 0.5, F * 0.48, p * 0.5, 0.58);
-  const I = gi(Y, i, o, R + F * 0.1, N - F * 0.03, l + p * 0.25, l + p * 0.53, R + F * 0.32, l + p * 0.4), M = gi(Y, i, o, N + F * 0.03, E - F * 0.1, l + p * 0.25, l + p * 0.53, R + F * 0.68, l + p * 0.4);
-  Ei(U, i, o, I.x, I.y, F * 0.105, p * 0.065, 1), Ei(U, i, o, M.x, M.y, F * 0.105, p * 0.065, 1), Ei(U, i, o, I.x, I.y - p * 0.09, F * 0.14, p * 0.045, 0.82), Ei(U, i, o, M.x, M.y - p * 0.09, F * 0.14, p * 0.045, 0.82), Ei(U, i, o, N, l + p * 0.59, F * 0.1, p * 0.16, 0.72);
+  const x = gi(Y, i, o, R + F * 0.1, N - F * 0.03, l + p * 0.25, l + p * 0.53, R + F * 0.32, l + p * 0.4), M = gi(Y, i, o, N + F * 0.03, E - F * 0.1, l + p * 0.25, l + p * 0.53, R + F * 0.68, l + p * 0.4);
+  Ei(U, i, o, x.x, x.y, F * 0.105, p * 0.065, 1), Ei(U, i, o, M.x, M.y, F * 0.105, p * 0.065, 1), Ei(U, i, o, x.x, x.y - p * 0.09, F * 0.14, p * 0.045, 0.82), Ei(U, i, o, M.x, M.y - p * 0.09, F * 0.14, p * 0.045, 0.82), Ei(U, i, o, N, l + p * 0.59, F * 0.1, p * 0.16, 0.72);
   const w = gi(Y, i, o, R + F * 0.25, E - F * 0.25, l + p * 0.62, l + p * 0.86, N, l + p * 0.75);
   return Ei(U, i, o, w.x, w.y, F * 0.18, p * 0.072, 0.96), Ei(U, i, o, N, l + p * 0.51, F * 0.55, p * 0.55, 0.62), U;
 }
@@ -138,22 +138,22 @@ function Bi(Y, i, o) {
 function _i(Y, i, o, K, U, h, a, R) {
   const E = Math.ceil(i / K), l = Math.ceil(o / K), S = E * l, F = new Int16Array(S), p = new Uint8Array(S);
   for (let M = 0; M < l; M++) for (let w = 0; w < E; w++) {
-    const x = Math.min(i - 1, Math.round((w + 0.5) * K)), G = Math.min(o - 1, Math.round((M + 0.5) * K)), m = (G * i + x) * 4, L = Math.min(U - 1, Math.floor(Y[m] / 256 * U)), W = Math.min(U - 1, Math.floor(Y[m + 1] / 256 * U)), C = Math.min(U - 1, Math.floor(Y[m + 2] / 256 * U));
+    const I = Math.min(i - 1, Math.round((w + 0.5) * K)), G = Math.min(o - 1, Math.round((M + 0.5) * K)), m = (G * i + I) * 4, L = Math.min(U - 1, Math.floor(Y[m] / 256 * U)), W = Math.min(U - 1, Math.floor(Y[m + 1] / 256 * U)), C = Math.min(U - 1, Math.floor(Y[m + 2] / 256 * U));
     F[M * E + w] = L + W * U + C * U * U;
   }
   const N = [];
   for (let M = 0; M < S; M++) {
     if (p[M]) continue;
-    const w = F[M], x = [M], G = [];
+    const w = F[M], I = [M], G = [];
     p[M] = 1;
     let m = 0, L = 0, W = 0;
-    for (; x.length; ) {
-      const C = x.pop(), s = C % E, q = Math.floor(C / E), T = Math.min(i - 1, Math.round((s + 0.5) * K)), k = Math.min(o - 1, Math.round((q + 0.5) * K)), Z = (k * i + T) * 4;
+    for (; I.length; ) {
+      const C = I.pop(), s = C % E, q = Math.floor(C / E), T = Math.min(i - 1, Math.round((s + 0.5) * K)), k = Math.min(o - 1, Math.round((q + 0.5) * K)), Z = (k * i + T) * 4;
       G.push(C), m += Y[Z], L += Y[Z + 1], W += Y[Z + 2];
       for (const c of [C - 1, C + 1, C - E, C + E]) {
         if (c < 0 || c >= S || p[c] || F[c] !== w) continue;
         const Q = c % E;
-        Math.abs(Q - s) > 1 || (p[c] = 1, x.push(c));
+        Math.abs(Q - s) > 1 || (p[c] = 1, I.push(c));
       }
     }
     if (G.length >= a) {
@@ -162,22 +162,22 @@ function _i(Y, i, o, K, U, h, a, R) {
     }
   }
   N.sort((M, w) => w.cells.length - M.cells.length);
-  const I = [];
+  const x = [];
   for (const M of N) {
-    let w = 0, x = 0;
+    let w = 0, I = 0;
     const G = M.cells.map((Q) => {
       const D = [(Q % E + 0.5) * K, (Math.floor(Q / E) + 0.5) * K];
-      return w += D[0], x += D[1], D;
+      return w += D[0], I += D[1], D;
     });
-    w /= G.length, x /= G.length;
+    w /= G.length, I /= G.length;
     let m = 0, L = 0, W = 0;
     for (const Q of G) {
-      const D = Q[0] - w, j = Q[1] - x;
+      const D = Q[0] - w, j = Q[1] - I;
       m += D * D, L += j * j, W += D * j;
     }
     const C = 0.5 * Math.atan2(2 * W, m - L), s = Math.cos(C), q = Math.sin(C), T = -q, k = s, Z = /* @__PURE__ */ new Map(), c = Math.max(K, h * 1.22);
     for (const Q of G) {
-      const D = Q[0] - w, j = Q[1] - x, y = D * s + j * q, e = D * T + j * k, P = Math.round(e / c), B = Z.get(P);
+      const D = Q[0] - w, j = Q[1] - I, y = D * s + j * q, e = D * T + j * k, P = Math.round(e / c), B = Z.get(P);
       B ? (B.min = Math.min(B.min, y), B.max = Math.max(B.max, y), B.v += e, B.count++) : Z.set(P, { min: y, max: y, v: e, count: 1 });
     }
     for (const Q of [...Z.values()].sort((D, j) => D.v / D.count - j.v / j.count)) {
@@ -185,35 +185,35 @@ function _i(Y, i, o, K, U, h, a, R) {
       if (Q.count < 2 || j - D < h * 1.65) continue;
       const y = Q.v / Q.count, e = R.between(-0.1, 0.1) * h, P = [];
       for (let A = 0; A <= 6; A++) {
-        const wi = A / 6, Fi = D + (j - D) * wi, ji = Math.sin(Math.PI * wi) * e, pi = w + s * Fi + T * (y + ji), Mi = x + q * Fi + k * (y + ji);
+        const wi = A / 6, Fi = D + (j - D) * wi, ji = Math.sin(Math.PI * wi) * e, pi = w + s * Fi + T * (y + ji), Mi = I + q * Fi + k * (y + ji);
         P.push([pi, Mi]);
       }
       const B = h * 1.1;
-      P.some((A) => A[0] < B || A[0] > i - B || A[1] < B || A[1] > o - B) || I.push({ points: P, color: M.color });
+      P.some((A) => A[0] < B || A[0] > i - B || A[1] < B || A[1] > o - B) || x.push({ points: P, color: M.color });
     }
   }
-  return I;
+  return x;
 }
 async function iU(Y, i, o, K = 420, U = "cover", h = "watercolor", a = "auto", R, E = {}) {
   const l = await $i(Y), S = Math.min(1, K / Math.max(l.width, l.height)), F = Math.max(24, Math.round(l.width * S)), p = Math.max(24, Math.round(l.height * S)), N = document.createElement("canvas");
   N.width = F, N.height = p;
-  const I = N.getContext("2d", { willReadFrequently: !0 });
-  I.drawImage(l, 0, 0, F, p);
-  const M = I.getImageData(0, 0, F, p).data, w = { strokeEconomy: 0.72, shapeSimplification: 0.62, strokeLength: 0.58, strokeWidth: 0.58, boundaryFidelity: 0.72, detailBudget: 0.42, detailMultiplier: 1, sourceAccuracy: 0.65, detailPrecision: 0.78, strokeCurvature: 0.34, ...E }, x = 0.48 + w.strokeEconomy * 0.72, G = 1.55 - w.strokeEconomy * 0.77, m = 1.7 - w.strokeEconomy * 0.97, L = 0.65 + w.strokeLength * 0.6, W = 0.65 + w.strokeWidth * 0.6, C = Math.max(1, Math.min(10, w.detailMultiplier)), s = Math.max(0, Math.min(1, w.sourceAccuracy)), q = R ? await R({ data: new Uint8ClampedArray(M), width: F, height: p }) : di(M, F, p, a);
+  const x = N.getContext("2d", { willReadFrequently: !0 });
+  x.drawImage(l, 0, 0, F, p);
+  const M = x.getImageData(0, 0, F, p).data, w = { strokeEconomy: 0.72, shapeSimplification: 0.62, strokeLength: 0.58, strokeWidth: 0.58, boundaryFidelity: 0.72, detailBudget: 0.42, detailMultiplier: 1, sourceAccuracy: 0.65, detailPrecision: 0.78, strokeCurvature: 0.34, ...E }, I = 0.48 + w.strokeEconomy * 0.72, G = 1.55 - w.strokeEconomy * 0.77, m = 1.7 - w.strokeEconomy * 0.97, L = 0.65 + w.strokeLength * 0.6, W = 0.65 + w.strokeWidth * 0.6, C = Math.max(1, Math.min(10, w.detailMultiplier)), s = Math.max(0, Math.min(1, w.sourceAccuracy)), q = R ? await R({ data: new Uint8ClampedArray(M), width: F, height: p }) : di(M, F, p, a);
   if (q.length !== F * p) throw new Error(`detailMap returned ${q.length} weights; expected ${F * p}.`);
   const T = 1 - s * 0.52, k = Wi(M, F, p, Math.round((6 + w.shapeSimplification * 7) * T)), Z = Wi(M, F, p, Math.round((3 + w.shapeSimplification * 5) * T)), c = Wi(M, F, p, Math.round((2 + w.shapeSimplification * 2) * T)), Q = s > 0.86 ? new Uint8ClampedArray(M) : Wi(M, F, p, 1), D = [Bi(c, F, p), Bi(Q, F, p), Bi(M, F, p)], j = new vi(i), y = l.width / l.height, e = [], P = [], B = Math.min(F, p), A = Math.max(F, p) / 360;
   let wi = 0;
   const Fi = (t, _, ai, ii, xi, u, Ii, Vi) => {
     const mi = _i(_, F, p, ai * A, ii, xi * A, u, j);
     for (const Si of mi) {
-      const g = wi++, O = xi * A / B * j.between(0.92, 1.08);
+      const g = wi++, n = xi * A / B * j.between(0.92, 1.08);
       for (let Ui = 1; Ui < Si.points.length; Ui++) {
         const H = Si.points[Ui - 1], r = Si.points[Ui];
         e.push({
           start: Gi(H[0] / F, H[1] / p, y, o, U),
           end: Gi(r[0] / F, r[1] / p, y, o, U),
           color: Si.color,
-          radius: O,
+          radius: n,
           opacity: Ii * j.between(0.94, 1.06),
           water: Vi * j.between(0.92, 1.08),
           layer: t,
@@ -223,7 +223,7 @@ async function iU(Y, i, o, K = 420, U = "cover", h = "watercolor", a = "auto", R
     }
     P.push(e.length);
   };
-  h === "oil" ? (Fi(0, k, 7 * x, 5, 15 * W, 3, 0.82, 0), Fi(1, Z, 5 * x, Math.round(8 - w.shapeSimplification * 2), 9 * W, 4, 0.88, 0)) : (Fi(0, k, 9 * x, 3, 24 * W, 3, 0.027, 0.94), Fi(1, Z, 6 * x, Math.round(5 - w.shapeSimplification), 15 * W, 4, 0.038, 0.78)), (h === "oil" ? [
+  h === "oil" ? (Fi(0, k, 7 * I, 5, 15 * W, 3, 0.82, 0), Fi(1, Z, 5 * I, Math.round(8 - w.shapeSimplification * 2), 9 * W, 4, 0.88, 0)) : (Fi(0, k, 9 * I, 3, 24 * W, 3, 0.027, 0.94), Fi(1, Z, 6 * I, Math.round(5 - w.shapeSimplification), 15 * W, 4, 0.038, 0.78)), (h === "oil" ? [
     { data: c, field: 0, spacing: 16, radius: 6.8, length: 120, opacity: 0.89, water: 0, chance: 0.68, edgeOnly: !1 },
     { data: c, field: 0, spacing: 11, radius: 4.3, length: 90, opacity: 0.92, water: 0, chance: 0.62, edgeOnly: !1 },
     { data: Q, field: 1, spacing: 7.5, radius: 2.45, length: 60, opacity: 0.95, water: 0, chance: 0.52, edgeOnly: !1 },
@@ -234,24 +234,24 @@ async function iU(Y, i, o, K = 420, U = "cover", h = "watercolor", a = "auto", R
     { data: Q, field: 1, spacing: 9, radius: 2.8, length: 32, opacity: 0.063, water: 0.29, chance: 0.5, edgeOnly: !1 },
     { data: M, field: 2, spacing: 7, radius: 1.08, length: 13, opacity: 0.064, water: 0.14, chance: 0.98, edgeOnly: !0 }
   ]).forEach((t, _) => {
-    const ai = _ + 2, ii = [], xi = _ === 1 ? 1 + (C - 1) * 0.2 : _ >= 2 ? C : 1, u = t.spacing * A * x / Math.sqrt(xi), Ii = t.radius * A * W / Math.pow(xi, 0.1), Vi = t.length * A * L, mi = j.between(0, u), Si = /* @__PURE__ */ new Set();
+    const ai = _ + 2, ii = [], xi = _ === 1 ? 1 + (C - 1) * 0.2 : _ >= 2 ? C : 1, u = t.spacing * A * I / Math.sqrt(xi), Ii = t.radius * A * W / Math.pow(xi, 0.1), Vi = t.length * A * L, mi = j.between(0, u), Si = /* @__PURE__ */ new Set();
     if (t.edgeOnly) {
       const g = [];
-      for (let H = 0, r = mi; r < p; H++, r += u) for (let hi = 0, n = mi; n < F; hi++, n += u) {
-        const f = Math.max(1, Math.min(F - 2, Math.round(n))), Ki = Math.max(1, Math.min(p - 2, Math.round(r))), Ni = D[t.field], Ri = Math.hypot(Ni.gx[Ki * F + f], Ni.gy[Ki * F + f]), Yi = Math.max(0, Math.min(1, q[Ki * F + f]));
+      for (let H = 0, r = mi; r < p; H++, r += u) for (let hi = 0, O = mi; O < F; hi++, O += u) {
+        const f = Math.max(1, Math.min(F - 2, Math.round(O))), Ki = Math.max(1, Math.min(p - 2, Math.round(r))), Ni = D[t.field], Ri = Math.hypot(Ni.gx[Ki * F + f], Ni.gy[Ki * F + f]), Yi = Math.max(0, Math.min(1, q[Ki * F + f]));
         Ri > 0.08 && Yi > 0.25 + w.detailPrecision * 0.22 && g.push({ key: H * 1e5 + hi, score: Math.pow(Yi, 2 + w.detailPrecision * 4) * (0.22 + Math.min(0.8, Ri)) });
       }
       g.sort((H, r) => r.score - H.score);
-      const O = h === "oil" ? 36 : 44, Ui = Math.round(O * (0.25 + w.detailBudget * 1.8) * m * C);
+      const n = h === "oil" ? 36 : 44, Ui = Math.round(n * (0.25 + w.detailBudget * 1.8) * m * C);
       g.slice(0, Ui).forEach((H) => Si.add(H.key));
     }
-    for (let g = 0, O = mi; O < p; g++, O += u) for (let Ui = 0, H = mi; H < F; Ui++, H += u) {
+    for (let g = 0, n = mi; n < p; g++, n += u) for (let Ui = 0, H = mi; H < F; Ui++, H += u) {
       if (t.edgeOnly && !Si.has(g * 1e5 + Ui)) continue;
-      const r = H + j.between(-u * 0.46, u * 0.46), hi = O + j.between(-u * 0.46, u * 0.46), n = Math.max(1, Math.min(F - 2, Math.round(r))), f = Math.max(1, Math.min(p - 2, Math.round(hi))), Ki = Math.max(0, Math.min(1, q[f * F + n])), Ni = _ < 2 ? 0.7 + Ki * 0.32 : _ === 2 ? 0.58 + Ki * 0.5 : 0.15 + Ki * 1.35;
+      const r = H + j.between(-u * 0.46, u * 0.46), hi = n + j.between(-u * 0.46, u * 0.46), O = Math.max(1, Math.min(F - 2, Math.round(r))), f = Math.max(1, Math.min(p - 2, Math.round(hi))), Ki = Math.max(0, Math.min(1, q[f * F + O])), Ni = _ < 2 ? 0.7 + Ki * 0.32 : _ === 2 ? 0.58 + Ki * 0.5 : 0.15 + Ki * 1.35;
       if (j.next() > Math.min(1, t.chance * G * Ni)) continue;
-      const Ri = D[t.field], Yi = Math.hypot(Ri.gx[f * F + n], Ri.gy[f * F + n]);
-      if (t.edgeOnly && (Yi < 0.15 || j.next() > Math.min(1, Yi * 2.1)) || h === "oil" && Ri.luma[f * F + n] > 0.76 && Yi < 0.07 && ai < 5) continue;
-      let d = -Ri.gy[f * F + n], v = Ri.gx[f * F + n];
+      const Ri = D[t.field], Yi = Math.hypot(Ri.gx[f * F + O], Ri.gy[f * F + O]);
+      if (t.edgeOnly && (Yi < 0.15 || j.next() > Math.min(1, Yi * 2.1)) || h === "oil" && Ri.luma[f * F + O] > 0.76 && Yi < 0.07 && ai < 5) continue;
+      let d = -Ri.gy[f * F + O], v = Ri.gx[f * F + O];
       const Qi = Math.hypot(d, v);
       if (Qi < 0.015) {
         const V = h === "oil" ? 0.1 + Math.sin(r * 0.018 + i) * 0.2 + Math.cos(hi * 0.016 - i * 0.7) * 0.16 : j.next() * Math.PI;
@@ -293,8 +293,8 @@ async function iU(Y, i, o, K = 420, U = "cover", h = "watercolor", a = "auto", R
       ii.push(Hi);
     }
     for (let g = ii.length - 1; g > 0; g--) {
-      const O = Math.floor(j.next() * (g + 1));
-      [ii[g], ii[O]] = [ii[O], ii[g]];
+      const n = Math.floor(j.next() * (g + 1));
+      [ii[g], ii[n]] = [ii[n], ii[g]];
     }
     ii.forEach((g) => e.push(...g)), P.push(e.length);
   });
@@ -426,7 +426,7 @@ class ui {
     }
     this.stopTimeline(), this.cancelCompletion(), this.cancelScrub();
     const i = 1 - this.progressState.progress;
-    this.timeline = Oi.to(this.progressState, {
+    this.timeline = ni.to(this.progressState, {
       progress: 1,
       duration: this.options.duration * i,
       ease: "none",
@@ -473,18 +473,27 @@ class ui {
     return this.canvas.toDataURL(i, o);
   }
   async captureHighQuality(i = 2048) {
+    return (await this.captureHighQualityLayers(i))?.withPaper ?? null;
+  }
+  async captureHighQualityLayers(i = 2048) {
     if (!this.source) return null;
     const o = Math.max(512, Math.min(4096, Math.round(i))), K = this.width / Math.max(1, this.height), U = K >= 1 ? o : Math.max(1, Math.round(o * K)), h = K >= 1 ? Math.max(1, Math.round(o / K)) : o, a = document.createElement("canvas");
     a.width = U, a.height = h, a.style.width = `${U}px`, a.style.height = `${h}px`;
     const R = new ui(a, { ...this.options, onProgress: void 0, onComplete: void 0, onPhaseChange: void 0, seed: this.seed, pixelRatio: 1 });
     R.resizeObserver.disconnect(), R.width = U, R.height = h, a.width = U, a.height = h, R.pigment.width = U, R.pigment.height = h, R.oilPigment.width = U, R.oilPigment.height = h, R.livePaint.width = U, R.livePaint.height = h, R.createPaper();
     try {
-      return await R.setImage(this.source), R.seek(this.progressState.progress), await new Promise((E) => {
-        const l = () => {
-          R.scrubFrame ? requestAnimationFrame(l) : E();
+      await R.setImage(this.source), R.seek(this.progressState.progress), await new Promise((N) => {
+        const x = () => {
+          R.scrubFrame ? requestAnimationFrame(x) : N();
         };
-        l();
-      }), await new Promise((E) => a.toBlob(E, "image/png"));
+        x();
+      });
+      const E = document.createElement("canvas");
+      E.width = U, E.height = h;
+      const l = E.getContext("2d");
+      l.drawImage(R.pigment, 0, 0), l.drawImage(R.livePaint, 0, 0);
+      const S = (N) => new Promise((x, M) => N.toBlob((w) => w ? x(w) : M(new Error("Unable to encode PNG.")), "image/png")), [F, p] = await Promise.all([S(a), S(E)]);
+      return { withPaper: F, transparent: p, width: U, height: h };
     } finally {
       R.destroy();
     }
@@ -604,32 +613,32 @@ class ui {
       const s = Math.floor(E.length * 0.34), q = Math.ceil(E.length * 0.66);
       E = E.slice(s, q);
     }
-    const p = Math.max(0.7, h.radius * this.height), N = i.map((s) => s.color.map((q) => Math.round(J(q) * 255))), I = this.oilLaneProfiles(E, N, p, U), M = this.averageOilProfiles(I), w = this.averageColors(M), x = J(h.opacity) * (0.78 + this.options.paintLoad * 0.42) * (S === "dry" ? 0.66 : 1), G = 0.4 + this.options.granulation * 0.9, m = K === this.pigmentContext, L = w.map((s) => Math.round(s * 0.58));
-    if (m && this.depositOilPigment(E, p, S, I, x, U.next() * 9), K.save(), K.lineCap = "round", K.lineJoin = "round", this.plan) {
+    const p = Math.max(0.7, h.radius * this.height), N = i.map((s) => s.color.map((q) => Math.round(J(q) * 255))), x = this.oilLaneProfiles(E, N, p, U), M = this.averageOilProfiles(x), w = this.averageColors(M), I = J(h.opacity) * (0.78 + this.options.paintLoad * 0.42) * (S === "dry" ? 0.66 : 1), G = 0.4 + this.options.granulation * 0.9, m = K === this.pigmentContext, L = w.map((s) => Math.round(s * 0.58));
+    if (m && this.depositOilPigment(E, p, S, x, I, U.next() * 9), K.save(), K.lineCap = "round", K.lineJoin = "round", this.plan) {
       const [s, q, T, k] = this.plan.bounds;
       K.beginPath(), K.rect(s * this.width, q * this.height, (T - s) * this.width, (k - q) * this.height), K.clip();
     }
-    K.globalCompositeOperation = "source-over", K.fillStyle = `rgba(${L[0]},${L[1]},${L[2]},${0.1 * x * G})`, K.filter = a < 0.5 ? "none" : `blur(${Math.min(2.2, p * 0.055)}px)`, this.fillOilBody(K, this.offsetPath(E, p * 0.14 * G, p * 0.16 * G), p * (1 + 0.07 * G), S, U.next() * 9), K.fill(), K.filter = "none", S !== "dry" && (K.fillStyle = this.oilGradient(K, E, M, (S === "knife" ? 0.96 : 0.9) * x), this.fillOilBody(K, E, p * (S === "knife" ? 1 : 0.94), S, U.next() * 9), K.fill());
-    const W = J(this.options.bristleStrength), C = p * 1.72 / I.length;
-    I.forEach((s, q) => {
+    K.globalCompositeOperation = "source-over", K.fillStyle = `rgba(${L[0]},${L[1]},${L[2]},${0.1 * I * G})`, K.filter = a < 0.5 ? "none" : `blur(${Math.min(2.2, p * 0.055)}px)`, this.fillOilBody(K, this.offsetPath(E, p * 0.14 * G, p * 0.16 * G), p * (1 + 0.07 * G), S, U.next() * 9), K.fill(), K.filter = "none", S !== "dry" && (K.fillStyle = this.oilGradient(K, E, M, (S === "knife" ? 0.96 : 0.9) * I), this.fillOilBody(K, E, p * (S === "knife" ? 1 : 0.94), S, U.next() * 9), K.fill());
+    const W = J(this.options.bristleStrength), C = p * 1.72 / x.length;
+    x.forEach((s, q) => {
       if (S === "dry" && U.next() < 0.2) return;
-      const T = (q / (I.length - 1) - 0.5) * p * 1.64 + (U.next() - 0.5) * p * 0.06;
-      if (K.globalCompositeOperation = "source-over", K.strokeStyle = this.oilGradient(K, E, s, (S === "dry" ? 0.58 : 0.28 + 0.24 * W) * x), K.lineWidth = Math.max(0.45, C * (S === "dry" ? 0.24 + U.next() * 0.42 : 0.54 + U.next() * 0.34)), S === "dry" && K.setLineDash([Math.max(1, p * (0.35 + U.next() * 0.55)), Math.max(1, p * (0.18 + U.next() * 0.45))]), this.strokePath(K, this.offsetPath(E, T, 0)), K.stroke(), K.setLineDash([]), S !== "dry" && W > 0.08) {
+      const T = (q / (x.length - 1) - 0.5) * p * 1.64 + (U.next() - 0.5) * p * 0.06;
+      if (K.globalCompositeOperation = "source-over", K.strokeStyle = this.oilGradient(K, E, s, (S === "dry" ? 0.58 : 0.28 + 0.24 * W) * I), K.lineWidth = Math.max(0.45, C * (S === "dry" ? 0.24 + U.next() * 0.42 : 0.54 + U.next() * 0.34)), S === "dry" && K.setLineDash([Math.max(1, p * (0.35 + U.next() * 0.55)), Math.max(1, p * (0.18 + U.next() * 0.45))]), this.strokePath(K, this.offsetPath(E, T, 0)), K.stroke(), K.setLineDash([]), S !== "dry" && W > 0.08) {
         const k = this.averageColors(s), Z = k.map((Q) => Math.round(Q + (255 - Q) * 0.48)), c = k.map((Q) => Math.round(Q * 0.6));
-        K.globalCompositeOperation = "screen", K.strokeStyle = `rgba(${Z[0]},${Z[1]},${Z[2]},${0.18 * G * x * this.options.gloss})`, K.lineWidth = Math.max(0.32, C * 0.17), this.strokePath(K, this.offsetPath(E, T - C * 0.16, -C * 0.05)), K.stroke(), K.globalCompositeOperation = "multiply", K.strokeStyle = `rgba(${c[0]},${c[1]},${c[2]},${0.085 * G * x})`, K.lineWidth = Math.max(0.3, C * 0.13), this.strokePath(K, this.offsetPath(E, T + C * 0.18, C * 0.04)), K.stroke();
+        K.globalCompositeOperation = "screen", K.strokeStyle = `rgba(${Z[0]},${Z[1]},${Z[2]},${0.18 * G * I * this.options.gloss})`, K.lineWidth = Math.max(0.32, C * 0.17), this.strokePath(K, this.offsetPath(E, T - C * 0.16, -C * 0.05)), K.stroke(), K.globalCompositeOperation = "multiply", K.strokeStyle = `rgba(${c[0]},${c[1]},${c[2]},${0.085 * G * I})`, K.lineWidth = Math.max(0.3, C * 0.13), this.strokePath(K, this.offsetPath(E, T + C * 0.18, C * 0.04)), K.stroke();
       }
-    }), this.paintOilSurface(K, E, p, M, U, G, x), K.globalCompositeOperation = "source-over", S === "loaded" && U.next() < 0.12 + this.options.paintLoad * 0.34 && this.paintOilTrails(K, E, p, w, U, x), K.restore();
+    }), this.paintOilSurface(K, E, p, M, U, G, I), K.globalCompositeOperation = "source-over", S === "loaded" && U.next() < 0.12 + this.options.paintLoad * 0.34 && this.paintOilTrails(K, E, p, w, U, I), K.restore();
   }
   oilLaneProfiles(i, o, K, U) {
     const h = this.options.renderQuality === "fast" ? 5 : this.options.renderQuality === "balanced" ? 7 : 9, a = this.options.renderQuality === "fast" ? 3 : this.options.renderQuality === "balanced" ? 4 : 5, R = [];
     for (let E = 0; E < h; E++) {
       const l = (E / (h - 1) - 0.5) * K * 1.56, S = [], F = [...o[0]];
       for (let p = 0; p < a; p++) {
-        const N = p / (a - 1), I = Math.min(i.length - 1, Math.round((i.length - 1) * N)), M = o[Math.min(o.length - 1, Math.round((o.length - 1) * N))], w = this.mixPigments(F, M, p === 0 ? 1 : 0.24);
+        const N = p / (a - 1), x = Math.min(i.length - 1, Math.round((i.length - 1) * N)), M = o[Math.min(o.length - 1, Math.round((o.length - 1) * N))], w = this.mixPigments(F, M, p === 0 ? 1 : 0.24);
         F[0] = w[0], F[1] = w[1], F[2] = w[2];
-        const x = this.sampleOilPigment(this.offsetPath([i[Math.max(0, I - 1)], i[I], i[Math.min(i.length - 1, I + 1)]], l, 0)[1]);
-        if (x.alpha > 0.05) {
-          const G = J(x.alpha * (0.055 + this.options.bloom * 0.22) * (1 - p / (a * 2)) * (0.82 + U.next() * 0.32), 0.02, 0.28), m = this.mixPigments(F, x.color, G);
+        const I = this.sampleOilPigment(this.offsetPath([i[Math.max(0, x - 1)], i[x], i[Math.min(i.length - 1, x + 1)]], l, 0)[1]);
+        if (I.alpha > 0.05) {
+          const G = J(I.alpha * (0.055 + this.options.bloom * 0.22) * (1 - p / (a * 2)) * (0.82 + U.next() * 0.32), 0.02, 0.28), m = this.mixPigments(F, I.color, G);
           F[0] = m[0], F[1] = m[1], F[2] = m[2];
         }
         S.push([...F]);
@@ -675,10 +684,10 @@ class ui {
   }
   paintOilTrails(i, o, K, U, h, a) {
     if (o.length < 2) return;
-    const R = o[o.length - 1], E = o[o.length - 2], l = R[0] - E[0], S = R[1] - E[1], F = Math.max(1, Math.hypot(l, S)), p = l / F, N = S / F, I = -N, M = p, w = h.next() < 0.7 ? 1 : 2;
-    for (let x = 0; x < w; x++) {
-      const G = x === 0 ? -1 : 1, m = G * K * (0.65 + h.next() * 0.24), L = K * (0.45 + h.next() * 0.85);
-      i.strokeStyle = `rgba(${U[0]},${U[1]},${U[2]},${a * (0.2 + h.next() * 0.22)})`, i.lineWidth = Math.max(0.35, K * (0.045 + h.next() * 0.08)), this.strokePath(i, [[E[0] + I * m, E[1] + M * m], [R[0] + I * m, R[1] + M * m], [R[0] + I * m + p * L, R[1] + M * m + N * L]]), i.stroke();
+    const R = o[o.length - 1], E = o[o.length - 2], l = R[0] - E[0], S = R[1] - E[1], F = Math.max(1, Math.hypot(l, S)), p = l / F, N = S / F, x = -N, M = p, w = h.next() < 0.7 ? 1 : 2;
+    for (let I = 0; I < w; I++) {
+      const G = I === 0 ? -1 : 1, m = G * K * (0.65 + h.next() * 0.24), L = K * (0.45 + h.next() * 0.85);
+      i.strokeStyle = `rgba(${U[0]},${U[1]},${U[2]},${a * (0.2 + h.next() * 0.22)})`, i.lineWidth = Math.max(0.35, K * (0.045 + h.next() * 0.08)), this.strokePath(i, [[E[0] + x * m, E[1] + M * m], [R[0] + x * m, R[1] + M * m], [R[0] + x * m + p * L, R[1] + M * m + N * L]]), i.stroke();
     }
   }
   offsetPath(i, o, K) {
@@ -716,7 +725,7 @@ class ui {
     if (o.length < 2) return;
     const a = [], R = [];
     o.forEach((E, l) => {
-      const S = o[Math.max(0, l - 1)], F = o[Math.min(o.length - 1, l + 1)], p = F[0] - S[0], N = F[1] - S[1], I = Math.max(1, Math.hypot(p, N)), M = l / (o.length - 1), w = U === "knife" ? 0.82 : U === "tap" ? 0.62 : 0.68, x = U === "knife" ? M < 0.82 ? 1 : 0.48 + (1 - M) * 2.85 : M < 0.16 ? w + M / 0.16 * 0.28 : M < 0.76 ? 0.96 : 0.22 + (1 - M) / 0.24 * 0.74, G = U === "dry" ? 0.16 : x, m = (U === "knife" ? 0.025 : 0.045) * Math.sin(M * Math.PI * 5 + h) + (U === "knife" ? 0.018 : 0.032) * Math.sin(M * Math.PI * 13 - h * 0.7), L = G * (1 + m + 0.035 * Math.sin(M * Math.PI * 3 + h * 0.41)), W = G * (1 - m * 0.7 + 0.045 * Math.cos(M * Math.PI * 4 - h * 0.3)), C = -N / I * K, s = p / I * K;
+      const S = o[Math.max(0, l - 1)], F = o[Math.min(o.length - 1, l + 1)], p = F[0] - S[0], N = F[1] - S[1], x = Math.max(1, Math.hypot(p, N)), M = l / (o.length - 1), w = U === "knife" ? 0.82 : U === "tap" ? 0.62 : 0.68, I = U === "knife" ? M < 0.82 ? 1 : 0.48 + (1 - M) * 2.85 : M < 0.16 ? w + M / 0.16 * 0.28 : M < 0.76 ? 0.96 : 0.22 + (1 - M) / 0.24 * 0.74, G = U === "dry" ? 0.16 : I, m = (U === "knife" ? 0.025 : 0.045) * Math.sin(M * Math.PI * 5 + h) + (U === "knife" ? 0.018 : 0.032) * Math.sin(M * Math.PI * 13 - h * 0.7), L = G * (1 + m + 0.035 * Math.sin(M * Math.PI * 3 + h * 0.41)), W = G * (1 - m * 0.7 + 0.045 * Math.cos(M * Math.PI * 4 - h * 0.3)), C = -N / x * K, s = p / x * K;
       a.push([E[0] + C * L, E[1] + s * L]), R.push([E[0] - C * W, E[1] - s * W]);
     }), i.beginPath(), i.moveTo(a[0][0], a[0][1]);
     for (let E = 1; E < a.length; E++) i.lineTo(a[E][0], a[E][1]);
@@ -727,13 +736,13 @@ class ui {
     const E = this.qualityFactor(), l = Math.max(2, Math.min(30, Math.round(K * 0.48 * E)));
     i.globalCompositeOperation = "multiply";
     for (let S = 0; S < l; S++) {
-      const F = Math.min(o.length - 2, Math.floor(h.next() * (o.length - 1))), p = o[F], N = o[F + 1], I = Math.atan2(N[1] - p[1], N[0] - p[0]), M = U[Math.floor(h.next() * U.length)];
-      i.save(), i.translate(p[0] + (h.next() - 0.5) * K, p[1] + (h.next() - 0.5) * K), i.rotate(I), i.fillStyle = `rgba(${Math.round(M[0] * 0.62)},${Math.round(M[1] * 0.62)},${Math.round(M[2] * 0.62)},${0.05 * a * R})`, i.beginPath(), i.ellipse(0, 0, Math.max(0.4, K * (0.04 + h.next() * 0.12)), Math.max(0.3, K * (0.025 + h.next() * 0.06)), 0, 0, Math.PI * 2), i.fill(), i.restore();
+      const F = Math.min(o.length - 2, Math.floor(h.next() * (o.length - 1))), p = o[F], N = o[F + 1], x = Math.atan2(N[1] - p[1], N[0] - p[0]), M = U[Math.floor(h.next() * U.length)];
+      i.save(), i.translate(p[0] + (h.next() - 0.5) * K, p[1] + (h.next() - 0.5) * K), i.rotate(x), i.fillStyle = `rgba(${Math.round(M[0] * 0.62)},${Math.round(M[1] * 0.62)},${Math.round(M[2] * 0.62)},${0.05 * a * R})`, i.beginPath(), i.ellipse(0, 0, Math.max(0.4, K * (0.04 + h.next() * 0.12)), Math.max(0.3, K * (0.025 + h.next() * 0.06)), 0, 0, Math.PI * 2), i.fill(), i.restore();
     }
     i.globalCompositeOperation = "screen";
     for (let S = 0; S < Math.ceil(l * (0.1 + this.options.gloss * 0.55)); S++) {
-      const F = Math.min(o.length - 2, Math.floor(h.next() * (o.length - 1))), p = o[F], N = o[F + 1], I = N[0] - p[0], M = N[1] - p[1], w = Math.max(1, Math.hypot(I, M)), x = -M / w, G = I / w, m = U[Math.floor(h.next() * U.length)], L = -K * (0.15 + h.next() * 0.45);
-      i.strokeStyle = `rgba(${Math.round(m[0] + (255 - m[0]) * 0.72)},${Math.round(m[1] + (255 - m[1]) * 0.72)},${Math.round(m[2] + (255 - m[2]) * 0.72)},${0.16 * a * R * this.options.gloss})`, i.lineWidth = Math.max(0.35, K * 0.04), i.beginPath(), i.moveTo(p[0] + x * L, p[1] + G * L), i.lineTo(p[0] + x * L + I * 0.65, p[1] + G * L + M * 0.65), i.stroke();
+      const F = Math.min(o.length - 2, Math.floor(h.next() * (o.length - 1))), p = o[F], N = o[F + 1], x = N[0] - p[0], M = N[1] - p[1], w = Math.max(1, Math.hypot(x, M)), I = -M / w, G = x / w, m = U[Math.floor(h.next() * U.length)], L = -K * (0.15 + h.next() * 0.45);
+      i.strokeStyle = `rgba(${Math.round(m[0] + (255 - m[0]) * 0.72)},${Math.round(m[1] + (255 - m[1]) * 0.72)},${Math.round(m[2] + (255 - m[2]) * 0.72)},${0.16 * a * R * this.options.gloss})`, i.lineWidth = Math.max(0.35, K * 0.04), i.beginPath(), i.moveTo(p[0] + I * L, p[1] + G * L), i.lineTo(p[0] + I * L + x * 0.65, p[1] + G * L + M * 0.65), i.stroke();
     }
   }
   paintWatercolorStroke(i, o, K = 0, U = this.pigmentContext) {
@@ -743,21 +752,21 @@ class ui {
       const [G, m, L, W] = this.plan.bounds;
       U.beginPath(), U.rect(G * this.width, m * this.height, (L - G) * this.width, (W - m) * this.height), U.clip();
     }
-    const I = 0.92 - this.options.edgeDarkening * 0.2;
-    U.fillStyle = `rgba(${Math.round(F[0] * I)},${Math.round(F[1] * I)},${Math.round(F[2] * I)},${p * (0.2 + this.options.edgeDarkening * 0.16 + K * 0.05)})`, U.filter = R < 0.5 ? "none" : `blur(${Math.min(3.2, S * 0.12)}px)`, this.fillOilBody(U, l, S * 1.2 * N, "loaded", a.next() * 8), U.fill(), U.filter = "none", U.fillStyle = `rgba(${F[0]},${F[1]},${F[2]},${p * 3.05})`, this.fillOilBody(U, l, S * 0.86, "loaded", a.next() * 8), U.fill();
+    const x = 0.92 - this.options.edgeDarkening * 0.2;
+    U.fillStyle = `rgba(${Math.round(F[0] * x)},${Math.round(F[1] * x)},${Math.round(F[2] * x)},${p * (0.2 + this.options.edgeDarkening * 0.16 + K * 0.05)})`, U.filter = R < 0.5 ? "none" : `blur(${Math.min(3.2, S * 0.12)}px)`, this.fillOilBody(U, l, S * 1.2 * N, "loaded", a.next() * 8), U.fill(), U.filter = "none", U.fillStyle = `rgba(${F[0]},${F[1]},${F[2]},${p * 3.05})`, this.fillOilBody(U, l, S * 0.86, "loaded", a.next() * 8), U.fill();
     const M = J(this.options.bristleStrength), w = Math.max(1, Math.min(10, Math.round(S * 0.42 * (0.3 + M) * R)));
     for (let G = 0; G < w; G++) {
       if (a.next() < 0.18) continue;
       const m = (G / Math.max(1, w - 1) - 0.5) * S * 1.5 + (a.next() - 0.5) * S * 0.12;
       U.strokeStyle = `rgba(${F[0]},${F[1]},${F[2]},${p * (0.2 + a.next() * 0.6) * M})`, U.lineWidth = Math.max(0.28, S * (0.025 + a.next() * 0.07)), this.strokePath(U, this.offsetPath(l, m, 0)), U.stroke();
     }
-    const x = Math.max(1, Math.min(9, Math.round(l.length * 0.24 * R)));
-    for (let G = 0; G < x; G++) {
+    const I = Math.max(1, Math.min(9, Math.round(l.length * 0.24 * R)));
+    for (let G = 0; G < I; G++) {
       const m = Math.min(l.length - 2, Math.floor(a.next() * (l.length - 1))), L = l[m], W = l[m + 1], C = W[0] - L[0], s = W[1] - L[1], q = Math.max(1, Math.hypot(C, s)), T = -s / q, k = C / q, Z = (a.next() - 0.5) * S * 1.35;
       this.paperHeight(L[0], L[1]) < 0.5 && (U.fillStyle = `rgba(${Math.round(F[0] * 0.64)},${Math.round(F[1] * 0.64)},${Math.round(F[2] * 0.64)},${p * (0.18 + a.next() * 0.25)})`, U.beginPath(), U.arc(L[0] + T * Z, L[1] + k * Z, Math.max(0.3, S * (0.025 + a.next() * 0.07)), 0, Math.PI * 2), U.fill());
     }
     U.globalCompositeOperation = "destination-out", U.fillStyle = `rgba(0,0,0,${0.02 + 0.035 * this.options.paperRoughness})`;
-    for (let G = 0; G < Math.min(6, x); G++) {
+    for (let G = 0; G < Math.min(6, I); G++) {
       const m = l[Math.floor(a.next() * l.length)];
       this.paperHeight(m[0], m[1]) > 0.56 && (U.beginPath(), U.arc(m[0] + (a.next() - 0.5) * S, m[1] + (a.next() - 0.5) * S, Math.max(0.25, S * (0.018 + a.next() * 0.045)), 0, Math.PI * 2), U.fill());
     }
